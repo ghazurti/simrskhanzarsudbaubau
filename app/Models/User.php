@@ -76,6 +76,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->role === 'kepala_unit';
     }
 
+    public function isPegawai()
+    {
+        return $this->role === 'pegawai';
+    }
+
     public function isAdminOrKepalaUnit()
     {
         return in_array($this->role, ['admin', 'kepala_unit']);

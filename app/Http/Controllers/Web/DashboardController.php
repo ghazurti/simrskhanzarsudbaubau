@@ -21,6 +21,8 @@ class DashboardController extends Controller
         if ($user->isAdmin()) {
             $data = [
                 'total_pegawai' => User::where('role', 'pegawai')->count(),
+                'hadir_hari_ini' => Absensi::whereDate('tanggal', $today)->whereIn('status', ['hadir', 'terlambat'])->count(),
+                'terlambat_hari_ini' => Absensi::whereDate('tanggal', $today)->where('status', 'terlambat')->count(),
                 'psw_hari_ini' => Absensi::with('shift')->whereDate('tanggal', $today)->get()->filter->is_psw->count(),
                 'lupa_absen_hari_ini' => Absensi::where('tanggal', '<', $today)->get()->filter->is_lupa_absen->count(),
                 'alpha_hari_ini' => User::where('role', 'pegawai')->count() - Absensi::whereDate('tanggal', $today)->count(),
