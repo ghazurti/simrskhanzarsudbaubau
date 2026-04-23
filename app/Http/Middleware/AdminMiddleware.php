@@ -15,8 +15,12 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check() || !auth()->user()->isAdmin()) {
-            return response()->json(['message' => 'Akses ditolak. Hanya admin yang diizinkan.'], 403);
+        if (!auth()->check()) {
+            return redirect()->route('login');
+        }
+
+        if (!auth()->user()->isAdmin()) {
+            return redirect()->route('dashboard')->with('error', 'Akses ditolak. Hanya admin yang diizinkan.');
         }
 
         return $next($request);
