@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Exports\LaporanAbsensiExport;
+use App\Exports\RekapAbsensiExport;
 use App\Http\Controllers\Controller;
 use App\Models\Absensi;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class LaporanController extends Controller
 {
@@ -59,53 +62,20 @@ class LaporanController extends Controller
 
     public function export(Request $request)
     {
-        $bulan = $request->get('bulan', Carbon::now()->month);
-        $tahun = $request->get('tahun', Carbon::now()->year);
-        $userId = $request->get('user_id');
-        $unit = $request->get('unit');
+        $bulan    = (int) $request->get('bulan', Carbon::now()->month);
+        $tahun    = (int) $request->get('tahun', Carbon::now()->year);
+        $userId   = $request->get('user_id') ? (int) $request->get('user_id') : null;
+        $unit     = $request->get('unit');
         $authUser = auth()->user();
 
         if ($authUser->isKepalaUnit()) {
             $unit = $authUser->unit;
         }
 
-        $absensis = Absensi::with('user')
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->when($userId, fn($q) => $q->where('user_id', $userId))
-            ->when($unit, fn($q) => $q->whereHas('user', fn($q2) => $q2->where('unit', $unit)))
-            ->orderBy('tanggal')
-            ->get();
-
-        $namaBulan = Carbon::create($tahun, $bulan)->locale('id')->isoFormat('MMMM YYYY');
-        $filename = "laporan-absensi-{$bulan}-{$tahun}.csv";
-
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = function () use ($absensis) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, ['No', 'Nama', 'NIP', 'Unit', 'Tanggal', 'Check In', 'Check Out', 'Status', 'Keterangan']);
-
-            foreach ($absensis as $i => $a) {
-                fputcsv($file, [
-                    $i + 1,
-                    $a->user->name ?? '-',
-                    $a->user->nip ?? '-',
-                    $a->user->unit ?? '-',
-                    Carbon::parse($a->tanggal)->format('d/m/Y'),
-                    $a->check_in ? Carbon::parse($a->check_in)->format('H:i') : '-',
-                    $a->check_out ? Carbon::parse($a->check_out)->format('H:i') : '-',
-                    strtoupper($a->status),
-                    $a->keterangan ?? '-',
-                ]);
-            }
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return Excel::download(
+            new LaporanAbsensiExport($bulan, $tahun, $userId, $unit),
+            "laporan-absensi-{$bulan}-{$tahun}.xlsx"
+        );
     }
     public function rekap(Request $request)
     {
@@ -138,57 +108,18 @@ class LaporanController extends Controller
 
     public function exportRekap(Request $request)
     {
-        $bulan = $request->get('bulan', Carbon::now()->month);
-        $tahun = $request->get('tahun', Carbon::now()->year);
-        $unit = $request->get('unit');
+        $bulan    = (int) $request->get('bulan', Carbon::now()->month);
+        $tahun    = (int) $request->get('tahun', Carbon::now()->year);
+        $unit     = $request->get('unit');
         $authUser = auth()->user();
 
         if ($authUser->isKepalaUnit()) {
             $unit = $authUser->unit;
         }
 
-        $users = User::where('role', 'pegawai')
-            ->when($unit, fn($q) => $q->where('unit', $unit))
-            ->with(['absensis' => function ($q) use ($bulan, $tahun) {
-                $q->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun);
-            }])
-            ->orderBy('unit')->orderBy('name')
-            ->get();
-
-        $filename = "rekapitulasi-absensi-{$bulan}-{$tahun}.csv";
-        header("Content-Type: text/csv");
-        header("Content-Disposition: attachment; filename=\"$filename\"");
-
-        $output = fopen("php://output", "w");
-        fputcsv($output, ['No', 'Nama Pegawai', 'NIP', 'Unit', 'Hadir', 'Terlambat', 'Izin/Sakit', 'Alpha', 'Total Lembur (Jam)']);
-
-        foreach ($users as $i => $u) {
-            $stats = $u->absensis->groupBy('status');
-            $hadir = ($stats['hadir'] ?? collect())->count();
-            $telat = ($stats['terlambat'] ?? collect())->count();
-            $izin = ($stats['izin'] ?? collect())->count() + ($stats['sakit'] ?? collect())->count();
-            $alpha = ($stats['alpha'] ?? collect())->count();
-            
-            // Total Lembur (Asumsi kita hitung record lembur atau durasi)
-            $totalLembur = \App\Models\Lembur::where('user_id', $u->id)
-                ->whereMonth('tanggal', $bulan)
-                ->whereYear('tanggal', $tahun)
-                ->where('status', 'approved')
-                ->count(); // Sederhana: hitung berapa kali lembur
-
-            fputcsv($output, [
-                $i + 1,
-                $u->name,
-                $u->nip ?? '-',
-                $u->unit ?? '-',
-                $hadir,
-                $telat,
-                $izin,
-                $alpha,
-                $totalLembur
-            ]);
-        }
-        fclose($output);
-        exit;
+        return Excel::download(
+            new RekapAbsensiExport($bulan, $tahun, $unit),
+            "rekapitulasi-absensi-{$bulan}-{$tahun}.xlsx"
+        );
     }
 }

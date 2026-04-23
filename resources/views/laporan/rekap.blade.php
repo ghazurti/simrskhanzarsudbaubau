@@ -11,7 +11,7 @@
         </div>
     </div>
     <a href="{{ route('laporan.export_rekap', request()->query()) }}" class="btn btn-primary">
-        <i class="bi bi-file-earmark-excel"></i> Export Excel (CSV)
+        <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
     </a>
 </div>
 

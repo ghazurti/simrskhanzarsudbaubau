@@ -21,7 +21,9 @@ class ShiftController extends Controller
         }
 
         $shifts = $query->orderBy('tanggal')->get();
-        $users = $user->isAdmin() ? \App\Models\User::where('role', 'pegawai')->orderBy('name')->get() : [];
+        $users = $user->isAdmin()
+            ? \App\Models\User::where('role', 'pegawai')->where('jenis_absensi', 'shift')->orderBy('name')->get()
+            : [];
 
         return view('shift.index', compact('shifts', 'bulan', 'tahun', 'users'));
     }

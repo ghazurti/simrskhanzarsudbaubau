@@ -107,7 +107,37 @@
             </div>
         </div>
 
-        {{-- Section 3: Akun Sistem --}}
+        {{-- Section 3: Jenis Absensi --}}
+        <div class="card" style="border:none;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);border-radius:16px;margin-bottom:24px">
+            <div class="card-header" style="background:transparent;padding:20px 24px;border-bottom:1px solid var(--gray-100)">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div style="width:36px;height:36px;border-radius:10px;background:#fff7ed;color:#d97706;display:flex;align-items:center;justify-content:center">
+                        <i class="bi bi-clock-history" style="font-size:18px"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:16px;color:var(--gray-900)">Jenis Absensi <span style="color:#dc2626">*</span></div>
+                        <div style="font-size:12px;color:var(--gray-400)">Menentukan aturan waktu kehadiran pegawai</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body" style="padding:24px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                    <label id="card_normal" onclick="highlightCard('normal')" style="cursor:pointer;border:2px solid {{ old('jenis_absensi','normal')=='normal'?'var(--primary)':'var(--gray-200)' }};border-radius:12px;padding:18px;background:{{ old('jenis_absensi','normal')=='normal'?'var(--primary-light)':'#fff' }};transition:.2s">
+                        <input type="radio" name="jenis_absensi" value="normal" {{ old('jenis_absensi','normal')=='normal'?'checked':'' }} style="display:none">
+                        <div style="font-weight:700;font-size:15px;color:var(--gray-900);margin-bottom:6px"><i class="bi bi-building me-2" style="color:var(--primary)"></i>Normal</div>
+                        <div style="font-size:12px;color:var(--gray-500)">Jam kantor: Sen–Kam 07:30–16:00, Jum 07:30–16:30. Libur Sabtu & Minggu.</div>
+                    </label>
+                    <label id="card_shift" onclick="highlightCard('shift')" style="cursor:pointer;border:2px solid {{ old('jenis_absensi')=='shift'?'var(--primary)':'var(--gray-200)' }};border-radius:12px;padding:18px;background:{{ old('jenis_absensi')=='shift'?'var(--primary-light)':'#fff' }};transition:.2s">
+                        <input type="radio" name="jenis_absensi" value="shift" {{ old('jenis_absensi')=='shift'?'checked':'' }} style="display:none">
+                        <div style="font-weight:700;font-size:15px;color:var(--gray-900);margin-bottom:6px"><i class="bi bi-arrow-repeat me-2" style="color:#d97706"></i>Shift</div>
+                        <div style="font-size:12px;color:var(--gray-500)">Mengikuti jadwal shift yang ditetapkan. Hari libur = tidak ada jadwal shift.</div>
+                    </label>
+                </div>
+                @error('jenis_absensi')<div style="color:#dc2626;font-size:12px;margin-top:8px;font-weight:500">{{ $message }}</div>@enderror
+            </div>
+        </div>
+
+        {{-- Section 4: Akun Sistem --}}
         <div class="card" style="border:none;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);border-radius:16px;margin-bottom:32px">
             <div class="card-header" style="background:transparent;padding:20px 24px;border-bottom:1px solid var(--gray-100)">
                 <div style="display:flex;align-items:center;gap:12px">
@@ -164,6 +194,17 @@
         </div>
 
         <script>
+            function highlightCard(val) {
+                document.querySelectorAll('[id^="card_"]').forEach(el => {
+                    el.style.borderColor = 'var(--gray-200)';
+                    el.style.background = '#fff';
+                });
+                const card = document.getElementById('card_' + val);
+                card.style.borderColor = 'var(--primary)';
+                card.style.background = 'var(--primary-light)';
+                card.querySelector('input[type=radio]').checked = true;
+            }
+
             function togglePass(id) {
                 const el = document.getElementById(id);
                 el.type = el.type === 'password' ? 'text' : 'password';

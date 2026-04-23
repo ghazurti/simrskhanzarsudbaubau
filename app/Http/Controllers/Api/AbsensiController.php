@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Absensi;
+use App\Models\Libur;
 use App\Models\Shift;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -76,9 +77,27 @@ class AbsensiController extends Controller
 
         $fotoPath = $request->file('foto')->store('foto-absensi', 'public');
 
-        // Tentukan status (terlambat jika > jam masuk shift)
+        if ($user->jenis_absensi === 'normal') {
+            $hariIni = Carbon::today()->dayOfWeek;
+            if (in_array($hariIni, config('attendance.hari_libur'))) {
+                return response()->json(['message' => 'Hari ini adalah hari libur. Absensi tidak tersedia.'], 422);
+            }
+            $liburNasional = Libur::whereDate('tanggal', Carbon::today())->first();
+            if ($liburNasional) {
+                return response()->json(['message' => 'Hari ini adalah hari libur nasional: ' . $liburNasional->nama_libur . '. Absensi tidak tersedia.'], 422);
+            }
+        }
+
         $status = 'hadir';
-        if ($request->filled('shift_id')) {
+        if ($user->jenis_absensi === 'normal') {
+            $hariIni   = Carbon::today()->dayOfWeek;
+            $jamKantor = config('attendance.jam_kantor')[$hariIni] ?? ['masuk' => '07:30'];
+            $toleransi = config('attendance.toleransi_menit', 15);
+            $jamMasuk  = Carbon::parse($today . ' ' . $jamKantor['masuk']);
+            if (Carbon::now()->gt($jamMasuk->addMinutes($toleransi))) {
+                $status = 'terlambat';
+            }
+        } elseif ($request->filled('shift_id')) {
             $shift = Shift::find($request->shift_id);
             if ($shift) {
                 $jamMasuk = Carbon::parse($today . ' ' . $shift->jam_masuk);

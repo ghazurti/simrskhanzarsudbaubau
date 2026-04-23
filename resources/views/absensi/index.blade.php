@@ -68,7 +68,38 @@
                 @endif
             </div>
             <div class="card-body">
-                @if($shiftHariIni)
+                @php
+                    $user = auth()->user();
+                    $hariIni = \Carbon\Carbon::today()->dayOfWeek;
+                    $isWeekend = in_array($hariIni, config('attendance.hari_libur', [0,6]));
+                @endphp
+
+                @if($liburHariIni)
+                <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#dc2626;font-weight:600;display:flex;align-items:center;gap:8px">
+                    <i class="bi bi-calendar-x-fill"></i>
+                    Libur Nasional: {{ $liburHariIni->nama_libur }}. Absensi tidak tersedia.
+                </div>
+                @elseif($user->jenis_absensi === 'normal' && $isWeekend)
+                <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#dc2626;font-weight:600;display:flex;align-items:center;gap:8px">
+                    <i class="bi bi-house-heart-fill"></i>
+                    Hari libur mingguan. Nikmati istirahat Anda!
+                </div>
+                @elseif($user->jenis_absensi === 'normal')
+                @php
+                    $jamKantor = config('attendance.jam_kantor')[$hariIni] ?? null;
+                    $toleransi = config('attendance.toleransi_menit', 15);
+                    $batasTerlambat = $jamKantor ? \Carbon\Carbon::parse(\Carbon\Carbon::today()->toDateString() . ' ' . $jamKantor['masuk'])->addMinutes($toleransi)->format('H:i') : null;
+                @endphp
+                <div style="background:var(--primary-light);border-radius:9px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--primary);font-weight:600;display:flex;align-items:center;gap:8px">
+                    <i class="bi bi-building"></i>
+                    @if($jamKantor)
+                        Jam Kantor: {{ $jamKantor['masuk'] }} — {{ $jamKantor['keluar'] }}
+                        <span style="font-weight:400;color:var(--gray-500);margin-left:4px">(Batas check-in: {{ $batasTerlambat }})</span>
+                    @else
+                        Jam kantor hari ini tidak terdefinisi.
+                    @endif
+                </div>
+                @elseif($shiftHariIni)
                 <div style="background:var(--primary-light);border-radius:9px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--primary);font-weight:600;display:flex;align-items:center;gap:8px">
                     <i class="bi bi-clock"></i>
                     Shift {{ ucfirst($shiftHariIni->jenis_shift) }}: {{ $shiftHariIni->jam_masuk }} — {{ $shiftHariIni->jam_keluar }}
