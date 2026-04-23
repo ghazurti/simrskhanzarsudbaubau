@@ -240,15 +240,8 @@
                 statusEl.className = 'status-box error';
             }
         } catch (err) {
-            console.warn('Middleware tidak terdeteksi, simulasi pendaftaran...');
-            setTimeout(() => {
-                if (confirm('Jalankan simulasi pendaftaran sidik jari?')) {
-                    saveEnrollment('SIMULATED_TEMPLATE_DATA_' + Math.random());
-                } else {
-                    statusEl.innerHTML = '<i class="bi bi-x-circle"></i> Pendaftaran dibatalkan';
-                    statusEl.className = 'status-box error';
-                }
-            }, 1000);
+            statusEl.innerHTML = '<i class="bi bi-usb-plug"></i> Alat sidik jari tidak terdeteksi. Pastikan perangkat U.are.U 4500 terhubung dan middleware berjalan.';
+            statusEl.className = 'status-box error';
         }
     }
 
