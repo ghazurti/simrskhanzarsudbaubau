@@ -14,6 +14,17 @@
             <span><i class="bi bi-plus-circle me-2" style="color:var(--primary)"></i>Penetapan Shift</span>
         </div>
         <div class="card-body">
+        @if(!auth()->user()->isAdmin() && auth()->user()->jenis_absensi !== 'shift')
+            <div style="text-align:center;padding:32px 16px">
+                <i class="bi bi-clock-history" style="font-size:40px;color:#94a3b8;display:block;margin-bottom:12px"></i>
+                <div style="font-weight:700;font-size:15px;color:#374151;margin-bottom:6px">Absensi Normal</div>
+                <div style="font-size:13px;color:#64748b;line-height:1.6">
+                    Anda terdaftar sebagai pegawai <strong>absensi normal</strong>.<br>
+                    Jadwal shift hanya tersedia untuk pegawai shift.<br>
+                    Hubungi admin untuk mengubah jenis absensi.
+                </div>
+            </div>
+        @else
             <form action="{{ route('shift.store') }}" method="POST">
                 @csrf
                 @if(auth()->user()->isAdmin())
@@ -87,6 +98,7 @@
                     <i class="bi bi-save"></i> Simpan Shift
                 </button>
             </form>
+        @endif
         </div>
     </div>
 

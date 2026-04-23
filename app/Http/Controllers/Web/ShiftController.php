@@ -30,7 +30,12 @@ class ShiftController extends Controller
 
     public function store(Request $request)
     {
-        $isAdmin = auth()->user()->isAdmin();
+        $user = auth()->user();
+        if (!$user->isAdmin() && $user->jenis_absensi !== 'shift') {
+            return back()->with('error', 'Anda terdaftar sebagai pegawai absensi normal. Tidak dapat membuat jadwal shift.');
+        }
+
+        $isAdmin = $user->isAdmin();
         
         $request->validate([
             'user_ids' => $isAdmin ? 'required|array' : 'nullable',
