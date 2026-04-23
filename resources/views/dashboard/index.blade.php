@@ -329,7 +329,10 @@
 @php
     $absensiHariIni = $data['absensi_hari_ini'];
     $shiftHariIni   = $data['shift_hari_ini'];
+    $liburHariIni   = $data['libur_hari_ini'];
     $rekap          = $data['rekap_bulan'];
+    $hariIni        = \Carbon\Carbon::today()->dayOfWeek;
+    $isWeekend      = in_array($hariIni, config('attendance.hari_libur', [0,6]));
 @endphp
 
 <div class="page-header">
@@ -372,7 +375,28 @@
         @endif
     </div>
 
-    @if($shiftHariIni)
+    @if($liburHariIni)
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+        <i class="bi bi-calendar-x-fill" style="color:#dc2626"></i>
+        <div style="font-size:13px;font-weight:600;color:#dc2626">Libur Nasional: {{ $liburHariIni->nama_libur }}</div>
+    </div>
+    @elseif($user->jenis_absensi === 'normal' && $isWeekend)
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+        <i class="bi bi-house-heart-fill" style="color:#dc2626"></i>
+        <div style="font-size:13px;font-weight:600;color:#dc2626">Hari libur mingguan. Nikmati istirahat Anda!</div>
+    </div>
+    @elseif($user->jenis_absensi === 'normal')
+    @php $jamKantor = config('attendance.jam_kantor')[$hariIni] ?? null; @endphp
+    @if($jamKantor)
+    <div style="background:var(--primary-light);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+        <i class="bi bi-building" style="color:var(--primary)"></i>
+        <div>
+            <div style="font-size:13px;font-weight:600;color:var(--primary)">Jam Kantor Hari Ini</div>
+            <div style="font-size:12px;color:var(--gray-500)">{{ $jamKantor['masuk'] }} — {{ $jamKantor['keluar'] }}</div>
+        </div>
+    </div>
+    @endif
+    @elseif($shiftHariIni)
     <div style="background:var(--primary-light);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
         <i class="bi bi-clock" style="color:var(--primary)"></i>
         <div>

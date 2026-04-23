@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Absensi;
 use App\Models\Izin;
+use App\Models\Libur;
 use App\Models\Shift;
 use App\Models\User;
 use Carbon\Carbon;
@@ -19,13 +20,21 @@ class DashboardController extends Controller
         $tahun = Carbon::now()->year;
 
         if ($user->isAdmin()) {
+            $totalPegawai = User::whereIn('role', ['pegawai', 'kepala_unit'])->count();
+            $sudahCheckinIds = Absensi::whereDate('tanggal', $today)->whereNotNull('check_in')->pluck('user_id');
+
             $data = [
-                'total_pegawai' => User::where('role', 'pegawai')->count(),
+                'total_pegawai' => $totalPegawai,
                 'hadir_hari_ini' => Absensi::whereDate('tanggal', $today)->whereIn('status', ['hadir', 'terlambat'])->count(),
                 'terlambat_hari_ini' => Absensi::whereDate('tanggal', $today)->where('status', 'terlambat')->count(),
                 'psw_hari_ini' => Absensi::with('shift')->whereDate('tanggal', $today)->get()->filter->is_psw->count(),
-                'lupa_absen_hari_ini' => Absensi::where('tanggal', '<', $today)->get()->filter->is_lupa_absen->count(),
-                'alpha_hari_ini' => User::where('role', 'pegawai')->count() - Absensi::whereDate('tanggal', $today)->count(),
+                'lupa_absen_hari_ini' => Absensi::whereDate('tanggal', '<', $today)
+                    ->whereNull('check_out')
+                    ->whereNotIn('status', ['izin', 'sakit', 'alpha'])
+                    ->count(),
+                'alpha_hari_ini' => User::whereIn('role', ['pegawai', 'kepala_unit'])
+                    ->whereNotIn('id', $sudahCheckinIds)
+                    ->count(),
                 'izin_hari_ini' => Izin::where('tanggal_mulai', '<=', $today)->where('tanggal_selesai', '>=', $today)->count(),
                 'rekap_bulan' => Absensi::whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)
                     ->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
@@ -57,6 +66,7 @@ class DashboardController extends Controller
             $data = [
                 'absensi_hari_ini' => Absensi::where('user_id', $user->id)->whereDate('tanggal', $today)->first(),
                 'shift_hari_ini' => Shift::where('user_id', $user->id)->whereDate('tanggal', $today)->first(),
+                'libur_hari_ini' => Libur::whereDate('tanggal', $today)->first(),
                 'rekap_bulan' => [
                     'hadir' => Absensi::where('user_id', $user->id)->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->where('status', 'hadir')->count(),
                     'terlambat' => Absensi::where('user_id', $user->id)->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->where('status', 'terlambat')->count(),
