@@ -10,7 +10,7 @@
     </div>
     <div style="display:flex;gap:10px">
         <button type="button" class="btn" onclick="openImportModal()" style="padding:12px 20px;border-radius:12px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-weight:600;display:flex;align-items:center;gap:8px">
-            <i class="bi bi-file-earmark-arrow-up"></i> Impor CSV
+            <i class="bi bi-file-earmark-arrow-up"></i> Impor Excel / CSV
         </button>
         <a href="{{ route('pegawai.create') }}" class="btn btn-primary" style="padding:12px 20px;border-radius:12px;box-shadow:0 10px 15px -3px rgba(37,99,235,0.2)">
             <i class="bi bi-plus-lg"></i> Tambah Pegawai
@@ -153,19 +153,41 @@
         </div>
         <form action="{{ route('pegawai.import') }}" method="POST" enctype="multipart/form-data" style="padding:24px">
             @csrf
-            <div style="margin-bottom:20px">
-                <label style="display:block;font-weight:600;font-size:14px;color:#475569;margin-bottom:8px">Pilih File CSV</label>
-                <input type="file" name="file" required class="form-control" style="padding:10px;border-radius:8px;border:1px solid #e2e8f0;width:100%">
-                <p style="font-size:12px;color:#64748b;margin-top:12px;line-height:1.6">
-                    <i class="bi bi-info-circle me-1"></i> Gunakan template kami untuk hasil terbaik.<br>
-                    <a href="{{ route('pegawai.template') }}" style="color:var(--primary);font-weight:700;text-decoration:none">
-                        Unduh Template CSV <i class="bi bi-download"></i>
-                    </a>
-                </p>
+            <div style="margin-bottom:16px">
+                <label style="display:block;font-weight:600;font-size:14px;color:#475569;margin-bottom:8px">
+                    Pilih File <span style="color:#dc2626">*</span>
+                </label>
+                <input type="file" name="file" required accept=".xlsx,.xls,.csv"
+                    class="form-control" style="padding:10px;border-radius:8px;border:1px solid #e2e8f0;width:100%">
+                <p style="font-size:12px;color:#64748b;margin-top:8px">Format yang didukung: <strong>.xlsx, .xls, .csv</strong> (maks. 5 MB)</p>
             </div>
-            <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:32px;padding-top:20px;border-top:1px solid #f1f5f9">
+
+            {{-- Kolom info --}}
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;font-size:12px;color:#475569;line-height:1.8">
+                <div style="font-weight:700;margin-bottom:6px;color:#1e293b"><i class="bi bi-table me-1"></i>Kolom yang diperlukan:</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px">
+                    <span><code>nama</code> — wajib</span>
+                    <span><code>email</code> — opsional</span>
+                    <span><code>nik</code> — wajib (unik)</span>
+                    <span><code>nip</code> — opsional</span>
+                    <span><code>no_hp</code> — opsional</span>
+                    <span><code>jabatan</code> — opsional</span>
+                    <span><code>pangkat_gol</code> — opsional</span>
+                    <span><code>unit</code> — opsional</span>
+                    <span><code>jenis_absensi</code> — <em>normal</em> / <em>shift</em></span>
+                    <span><code>role</code> — <em>pegawai</em> / <em>kepala_unit</em></span>
+                </div>
+            </div>
+
+            <a href="{{ route('pegawai.template') }}" style="display:inline-flex;align-items:center;gap:8px;color:#16a34a;font-weight:700;font-size:13px;text-decoration:none;margin-bottom:20px">
+                <i class="bi bi-file-earmark-excel-fill" style="font-size:16px"></i> Unduh Template Excel
+            </a>
+
+            <div style="display:flex;gap:12px;justify-content:flex-end;padding-top:16px;border-top:1px solid #f1f5f9">
                 <button type="button" onclick="closeImportModal()" style="padding:10px 20px;border-radius:10px;background:#f1f5f9;border:none;color:#475569;font-weight:600;cursor:pointer">Batal</button>
-                <button type="submit" style="padding:10px 24px;border-radius:10px;background:var(--primary);border:none;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 4px 6px -1px rgba(37,99,235,0.2)">Mulai Impor</button>
+                <button type="submit" style="padding:10px 24px;border-radius:10px;background:var(--primary);border:none;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 4px 6px -1px rgba(37,99,235,0.2)">
+                    <i class="bi bi-upload me-1"></i> Mulai Impor
+                </button>
             </div>
         </form>
     </div>

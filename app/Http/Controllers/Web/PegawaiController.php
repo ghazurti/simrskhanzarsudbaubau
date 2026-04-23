@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Exports\TemplatePegawaiExport;
 use App\Http\Controllers\Controller;
+use App\Imports\PegawaiImport;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PegawaiController extends Controller
 {
@@ -77,68 +80,24 @@ class PegawaiController extends Controller
 
     public function importTemplate()
     {
-        $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=template_pegawai.csv",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        ];
-
-        $columns = ['nama', 'email', 'nik', 'nip', 'no_hp', 'jabatan', 'pangkat_gol', 'unit'];
-
-        $callback = function() use($columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);
-            // Contoh data
-            fputcsv($file, ['Budi Santoso', '', '1234567890123456', '198001012005011001', '0812345678', 'Perawat', 'Penata / III-c', 'IGD']);
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return Excel::download(new TemplatePegawaiExport(), 'template_import_pegawai.xlsx');
     }
 
     public function import(Request $request)
     {
-        $request->validate(['file' => 'required|mimes:csv,txt']);
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv,txt|max:5120',
+        ]);
 
-        $file = $request->file('file');
-        $handle = fopen($file->getRealPath(), "r");
-        $header = fgetcsv($handle, 1000, ",");
-        
-        $count = 0;
-        $errors = 0;
+        $import = new PegawaiImport();
+        Excel::import($import, $request->file('file'));
 
-        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-            try {
-                // index: 0:nama, 1:email, 2:nik, 3:nip, 4:no_hp, 5:jabatan, 6:pangkat_gol, 7:unit
-                $nik = trim($data[2]);
-                if (empty($nik)) continue;
-
-                $email = trim($data[1]) ?: $nik . '@rsud-baubau.go.id';
-                
-                User::updateOrCreate(
-                    ['nik' => $nik],
-                    [
-                        'name' => trim($data[0]),
-                        'email' => $email,
-                        'nip' => trim($data[3]),
-                        'no_hp' => trim($data[4]),
-                        'jabatan' => trim($data[5]),
-                        'pangkat_gol' => trim($data[6]),
-                        'unit' => trim($data[7]),
-                        'role' => 'pegawai', // Default for import
-                        'password' => Hash::make($nik),
-                    ]
-                );
-                $count++;
-            } catch (\Exception $e) {
-                $errors++;
-            }
+        $msg = "{$import->imported} pegawai berhasil diimpor.";
+        if ($import->errors > 0) {
+            $msg .= " Gagal: {$import->errors} baris.";
         }
-        fclose($handle);
 
-        return redirect()->route('pegawai.index')->with('success', "$count pegawai berhasil diimpor. (Gagal: $errors)");
+        return redirect()->route('pegawai.index')->with('success', $msg);
     }
 
     public function edit(User $pegawai)
