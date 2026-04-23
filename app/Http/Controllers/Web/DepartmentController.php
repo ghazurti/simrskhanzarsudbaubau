@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Exports\TemplateDepartementExport;
 use App\Http\Controllers\Controller;
+use App\Imports\DepartementImport;
 use App\Models\Department;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DepartmentController extends Controller
 {
@@ -12,6 +15,28 @@ class DepartmentController extends Controller
     {
         $departments = Department::orderBy('nama')->paginate(15);
         return view('departemen.index', compact('departments'));
+    }
+
+    public function importTemplate()
+    {
+        return Excel::download(new TemplateDepartementExport(), 'template_import_departemen.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv,txt|max:2048',
+        ]);
+
+        $import = new DepartementImport();
+        Excel::import($import, $request->file('file'));
+
+        $msg = "{$import->imported} departemen berhasil diimpor.";
+        if ($import->errors > 0) {
+            $msg .= " Gagal: {$import->errors} baris.";
+        }
+
+        return redirect()->route('departemen.index')->with('success', $msg);
     }
 
     public function create()

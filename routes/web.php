@@ -55,6 +55,8 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('/pegawai', PegawaiController::class);
 
         // Kelola Departemen
+        Route::get('/departemen/template', [DepartmentController::class, 'importTemplate'])->name('departemen.template');
+        Route::post('/departemen/import', [DepartmentController::class, 'import'])->name('departemen.import');
         Route::resource('/departemen', DepartmentController::class)->parameters([
             'departemen' => 'departemen'
         ]);

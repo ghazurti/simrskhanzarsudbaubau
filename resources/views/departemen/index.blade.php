@@ -8,9 +8,15 @@
         <div style="font-size:22px;font-weight:800;color:var(--gray-900)">Data Departemen</div>
         <div style="font-size:13px;color:var(--gray-400);margin-top:3px">Kelola data departemen / unit kerja RSUD Kota Baubau</div>
     </div>
-    <a href="{{ route('departemen.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> Tambah Departemen
-    </a>
+    <div style="display:flex;gap:10px">
+        <button type="button" onclick="document.getElementById('importModal').style.display='flex'"
+            class="btn" style="padding:10px 18px;border-radius:10px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-weight:600;display:flex;align-items:center;gap:8px">
+            <i class="bi bi-file-earmark-arrow-up"></i> Impor Excel / CSV
+        </button>
+        <a href="{{ route('departemen.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Tambah Departemen
+        </a>
+    </div>
 </div>
 
 <div class="card">
@@ -82,3 +88,48 @@
     </div>
 </div>
 @endsection
+
+{{-- Modal Import --}}
+<div id="importModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:#fff;width:100%;max-width:480px;border-radius:16px;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25)">
+        <div style="padding:20px 24px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+            <h3 style="margin:0;font-size:18px;font-weight:800;color:#1e293b">Impor Data Departemen</h3>
+            <button onclick="document.getElementById('importModal').style.display='none'" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:20px"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form action="{{ route('departemen.import') }}" method="POST" enctype="multipart/form-data" style="padding:24px">
+            @csrf
+            <div style="margin-bottom:16px">
+                <label style="display:block;font-weight:600;font-size:14px;color:#475569;margin-bottom:8px">Pilih File <span style="color:#dc2626">*</span></label>
+                <input type="file" name="file" required accept=".xlsx,.xls,.csv"
+                    class="form-control" style="padding:10px;border-radius:8px;border:1px solid #e2e8f0;width:100%">
+                <p style="font-size:12px;color:#64748b;margin-top:8px">Format: <strong>.xlsx, .xls, .csv</strong></p>
+            </div>
+
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;font-size:12px;color:#475569;line-height:1.8">
+                <div style="font-weight:700;margin-bottom:4px;color:#1e293b"><i class="bi bi-table me-1"></i>Kolom yang diperlukan:</div>
+                <div><code>kode</code> — wajib, unik (contoh: IGD, POL-IN)</div>
+                <div><code>nama</code> — wajib, nama lengkap departemen</div>
+                <div><code>keterangan</code> — opsional</div>
+            </div>
+
+            <a href="{{ route('departemen.template') }}" style="display:inline-flex;align-items:center;gap:8px;color:#16a34a;font-weight:700;font-size:13px;text-decoration:none;margin-bottom:20px">
+                <i class="bi bi-file-earmark-excel-fill" style="font-size:16px"></i> Unduh Template Excel
+            </a>
+
+            <div style="display:flex;gap:12px;justify-content:flex-end;padding-top:16px;border-top:1px solid #f1f5f9">
+                <button type="button" onclick="document.getElementById('importModal').style.display='none'"
+                    style="padding:10px 20px;border-radius:10px;background:#f1f5f9;border:none;color:#475569;font-weight:600;cursor:pointer">Batal</button>
+                <button type="submit" style="padding:10px 24px;border-radius:10px;background:var(--primary);border:none;color:#fff;font-weight:700;cursor:pointer">
+                    <i class="bi bi-upload me-1"></i> Mulai Impor
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('click', function(e) {
+        const modal = document.getElementById('importModal');
+        if (e.target === modal) modal.style.display = 'none';
+    });
+</script>
