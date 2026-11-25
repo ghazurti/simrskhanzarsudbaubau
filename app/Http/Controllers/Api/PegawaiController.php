@@ -88,4 +88,19 @@ class PegawaiController extends Controller
 
         return response()->json(['message' => 'Pegawai berhasil dihapus']);
     }
+
+    public function resetDevice(string $id)
+    {
+        $user = User::findOrFail($id);
+        $user->update([
+            'device_id' => null,
+            'device_name' => null,
+            'device_bound_at' => null,
+        ]);
+
+        return response()->json([
+            'message' => 'Perangkat pegawai berhasil direset. Pegawai dapat login di HP baru.',
+            'user' => $user->fresh(),
+        ]);
+    }
 }

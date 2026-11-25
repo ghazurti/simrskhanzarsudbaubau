@@ -17,6 +17,8 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
+            'device_id' => 'nullable|string|max:191',
+            'device_name' => 'nullable|string|max:191',
         ]);
 
         $key = 'login:' . $request->ip();
@@ -33,6 +35,52 @@ class AuthController extends Controller
         if (!$token = JWTAuth::attempt($credentials)) {
             RateLimiter::hit($key, 60); // blokir 60 detik setelah 5 gagal
             return response()->json(['message' => 'Email atau password salah'], 401);
+        }
+
+        $user = auth('api')->user();
+
+        if (!$user->isAdmin()) {
+            $deviceId = trim((string) ($request->input('device_id') ?: $request->header('X-Device-Id', '')));
+            $deviceName = trim((string) $request->input('device_name', ''));
+
+            if ($deviceId === '') {
+                auth('api')->logout();
+                return response()->json([
+                    'message' => 'Perbarui aplikasi ke versi terbaru agar keamanan perangkat (1 HP 1 pegawai) dapat diverifikasi.',
+                ], 422);
+            }
+
+            // Cek apakah HP ini sudah terikat ke pegawai lain
+            $usedByOther = User::where('device_id', $deviceId)
+                ->where('id', '!=', $user->id)
+                ->first();
+
+            if ($usedByOther) {
+                auth('api')->logout();
+                return response()->json([
+                    'message' => 'HP ini sudah terdaftar atas nama pegawai lain (' . $usedByOther->name . '). Satu HP hanya boleh digunakan oleh satu pegawai.',
+                ], 403);
+            }
+
+            // Cek apakah akun ini sudah terikat ke HP lain
+            if ($user->device_id && $user->device_id !== $deviceId) {
+                auth('api')->logout();
+                $perangkat = $user->device_name ?: 'perangkat terdaftar';
+                return response()->json([
+                    'message' => "Akun Anda sudah terkunci di HP lain ({$perangkat}). Hubungi Admin/Kepegawaian untuk reset perangkat jika ganti HP.",
+                ], 403);
+            }
+
+            // Kunci akun ke HP ini saat login pertama (atau setelah direset admin)
+            if (!$user->device_id) {
+                $user->update([
+                    'device_id' => $deviceId,
+                    'device_name' => $deviceName !== '' ? $deviceName : null,
+                    'device_bound_at' => now(),
+                ]);
+            } elseif ($deviceName !== '' && $user->device_name !== $deviceName) {
+                $user->update(['device_name' => $deviceName]);
+            }
         }
 
         RateLimiter::clear($key);

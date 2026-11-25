@@ -141,4 +141,15 @@ class PegawaiController extends Controller
         $pegawai->delete();
         return back()->with('success', 'Pegawai berhasil dihapus.');
     }
+
+    public function resetDevice(User $pegawai)
+    {
+        $pegawai->update([
+            'device_id' => null,
+            'device_name' => null,
+            'device_bound_at' => null,
+        ]);
+
+        return back()->with('success', "Perangkat {$pegawai->name} berhasil direset. Pegawai kini dapat login di HP baru.");
+    }
 }

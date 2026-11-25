@@ -102,10 +102,29 @@
                                 <i class="bi bi-envelope" style="font-size:13px;color:var(--gray-300)"></i>
                                 {{ $p->email }}
                             </div>
+                            <div style="margin-top:4px">
+                                @if($p->device_id)
+                                <span style="background:#ecfdf5;color:#047857;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;border:1px solid #a7f3d0;display:inline-flex;align-items:center;gap:4px" title="ID: {{ $p->device_id }}">
+                                    <i class="bi bi-phone-fill"></i> {{ $p->device_name ?: 'HP Terkunci' }}
+                                </span>
+                                @else
+                                <span style="background:#f8fafc;color:#94a3b8;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid #e2e8f0;display:inline-block">
+                                    Belum Terikat HP
+                                </span>
+                                @endif
+                            </div>
                         </div>
                     </td>
                     <td style="padding:16px 24px;text-align:right">
-                        <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
+                        <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap">
+                            @if($p->device_id)
+                            <form action="{{ route('pegawai.reset-device', $p) }}" method="POST" onsubmit="return confirm('Reset kunci HP untuk {{ addslashes($p->name) }}? Pegawai akan bisa login di HP baru.')">
+                                @csrf
+                                <button type="submit" class="btn" style="padding:8px 12px;background:#fffbeb;color:#b45309;border:1px solid #fde68a;border-radius:10px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;cursor:pointer" onmouseover="this.style.background='#fde68a'" onmouseout="this.style.background='#fffbeb'">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Reset HP
+                                </button>
+                            </form>
+                            @endif
                             <button type="button" onclick="openEnrollModal('{{ $p->id }}', '{{ addslashes($p->name) }}')" class="btn" style="padding:8px 12px;background:#fdf4ff;color:#a21caf;border:1px solid #f5d0fe;border-radius:10px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s" onmouseover="this.style.background='#f5d0fe'" onmouseout="this.style.background='#fdf4ff'">
                                 <i class="bi bi-fingerprint"></i> Daftar Jari
                             </button>
