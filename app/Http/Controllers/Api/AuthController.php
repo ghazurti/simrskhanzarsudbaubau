@@ -111,11 +111,13 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
-            'no_hp' => 'sometimes|string|max:20',
+            'nik' => 'sometimes|nullable|string|max:30|unique:users,nik,' . $user->id,
+            'nip' => 'sometimes|nullable|string|max:30|unique:users,nip,' . $user->id,
+            'no_hp' => 'sometimes|nullable|string|max:20',
             'foto' => 'sometimes|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
-        $data = $request->only(['name', 'email', 'no_hp']);
+        $data = $request->only(['name', 'email', 'nik', 'nip', 'no_hp']);
 
         if ($request->hasFile('foto')) {
             $path = $request->file('foto')->store('foto-profil', 'public');

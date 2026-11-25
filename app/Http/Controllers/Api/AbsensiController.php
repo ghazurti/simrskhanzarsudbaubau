@@ -60,7 +60,7 @@ class AbsensiController extends Controller
             ->first();
 
         if ($existing && $existing->check_in) {
-            return response()->json(['message' => 'Anda sudah melakukan check-in hari ini'], 422);
+            return response()->json(['message' => 'Anda sudah melakukan absen masuk hari ini'], 422);
         }
 
         // Cek jarak
@@ -121,7 +121,7 @@ class AbsensiController extends Controller
             ]
         );
 
-        return response()->json(['message' => 'Check-in berhasil', 'absensi' => $absensi], 201);
+        return response()->json(['message' => 'Absen masuk berhasil', 'absensi' => $absensi], 201);
     }
 
     public function checkOut(Request $request)
@@ -140,11 +140,11 @@ class AbsensiController extends Controller
             ->first();
 
         if (!$absensi || !$absensi->check_in) {
-            return response()->json(['message' => 'Anda belum melakukan check-in hari ini'], 422);
+            return response()->json(['message' => 'Anda belum melakukan absen masuk hari ini'], 422);
         }
 
         if ($absensi->check_out) {
-            return response()->json(['message' => 'Anda sudah melakukan check-out hari ini'], 422);
+            return response()->json(['message' => 'Anda sudah melakukan absen pulang hari ini'], 422);
         }
 
         $fotoPath = $request->hasFile('foto')
@@ -158,7 +158,7 @@ class AbsensiController extends Controller
             'longitude_out' => $request->longitude,
         ]);
 
-        return response()->json(['message' => 'Check-out berhasil', 'absensi' => $absensi]);
+        return response()->json(['message' => 'Absen pulang berhasil', 'absensi' => $absensi]);
     }
 
     public function rekap(Request $request)
