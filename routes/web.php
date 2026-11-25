@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/lembur/{lembur}/reject', [\App\Http\Controllers\Web\LemburController::class, 'reject'])->name('lembur.reject');
 
         // Manajemen Hari Libur Nasional
+        Route::post('/libur/sync', [\App\Http\Controllers\Web\LiburController::class, 'sync'])->name('libur.sync');
         Route::resource('/libur', \App\Http\Controllers\Web\LiburController::class)->only(['index', 'store', 'destroy']);
 
         // Persetujuan Koreksi Absensi

@@ -8,26 +8,59 @@
 
 <div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start">
     
-    {{-- Form Tambah --}}
-    <div class="card">
-        <div class="card-header">
-            <span><i class="bi bi-plus-circle me-2" style="color:var(--primary)"></i>Tambah Hari Libur</span>
+    {{-- Kolom Kiri: Sinkronisasi Otomatis + Form Tambah Manual --}}
+    <div style="display:flex;flex-direction:column;gap:20px">
+        {{-- Sinkronisasi Otomatis --}}
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-cloud-download me-2" style="color:var(--primary)"></i>Tarik Libur Otomatis</span>
+            </div>
+            <div class="card-body">
+                <form action="{{ route('libur.sync') }}" method="POST">
+                    @csrf
+                    <div class="form-group">
+                        <label class="form-label">Pilih Tahun</label>
+                        <select name="tahun" class="form-control form-select" required>
+                            @for($y = date('Y') - 1; $y <= date('Y') + 2; $y++)
+                            <option value="{{ $y }}" {{ $y == date('Y') ? 'selected' : '' }}>{{ $y }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                    <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+                        <input type="checkbox" id="sertakan_cuti_bersama" name="sertakan_cuti_bersama" value="1" checked style="width:16px;height:16px;cursor:pointer">
+                        <label for="sertakan_cuti_bersama" style="margin:0;font-size:13px;cursor:pointer;color:var(--gray-700)">Sertakan Cuti Bersama</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px">
+                        <i class="bi bi-arrow-repeat"></i> Sinkronkan Libur Nasional
+                    </button>
+                    <div style="font-size:11px;color:var(--gray-400);margin-top:8px">
+                        Sumber: Kalender Hari Libur Indonesia (Google Calendar). Tanggal yang sudah ada tidak akan diduplikasi.
+                    </div>
+                </form>
+            </div>
         </div>
-        <div class="card-body">
-            <form action="{{ route('libur.store') }}" method="POST">
-                @csrf
-                <div class="form-group">
-                    <label class="form-label">Tanggal</label>
-                    <input type="date" name="tanggal" class="form-control" value="{{ old('tanggal') }}" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Nama Hari Libur</label>
-                    <input type="text" name="nama_libur" class="form-control" placeholder="Contoh: Idul Fitri, Tahun Baru" value="{{ old('nama_libur') }}" required>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px">
-                    <i class="bi bi-calendar-plus"></i> Tambah Libur
-                </button>
-            </form>
+
+        {{-- Form Tambah Manual --}}
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-plus-circle me-2" style="color:var(--primary)"></i>Tambah Manual</span>
+            </div>
+            <div class="card-body">
+                <form action="{{ route('libur.store') }}" method="POST">
+                    @csrf
+                    <div class="form-group">
+                        <label class="form-label">Tanggal</label>
+                        <input type="date" name="tanggal" class="form-control" value="{{ old('tanggal') }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nama Hari Libur</label>
+                        <input type="text" name="nama_libur" class="form-control" placeholder="Contoh: Idul Fitri, Tahun Baru" value="{{ old('nama_libur') }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-outline" style="width:100%;justify-content:center;padding:12px">
+                        <i class="bi bi-calendar-plus"></i> Tambah Libur
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
