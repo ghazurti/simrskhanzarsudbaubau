@@ -19,11 +19,22 @@ class LaporanController extends Controller
         $tahun = $request->get('tahun', Carbon::now()->year);
         $userId = $request->get('user_id');
         $unit = $request->get('unit');
+        $foto = $request->get('foto');
         $authUser = auth()->user();
 
         if ($authUser->isKepalaUnit()) {
             $unit = $authUser->unit;
         }
+
+        $applyFotoFilter = function ($q) use ($foto) {
+            if ($foto === 'ada') {
+                $q->where(function ($sub) {
+                    $sub->whereNotNull('foto_check_in')->orWhereNotNull('foto_check_out');
+                });
+            } elseif ($foto === 'tidak') {
+                $q->whereNull('foto_check_in')->whereNull('foto_check_out');
+            }
+        };
 
         $query = Absensi::with('user')
             ->whereMonth('tanggal', $bulan)
@@ -35,12 +46,16 @@ class LaporanController extends Controller
             $query->whereHas('user', fn($q) => $q->where('unit', $unit));
         }
 
+        $applyFotoFilter($query);
+
         $absensis = $query->orderBy('tanggal', 'desc')->paginate(20)->withQueryString();
 
         $rekapQuery = Absensi::whereMonth('tanggal', $bulan)
             ->whereYear('tanggal', $tahun)
             ->when($userId, fn($q) => $q->where('user_id', $userId))
             ->when($unit, fn($q) => $q->whereHas('user', fn($q2) => $q2->where('unit', $unit)));
+
+        $applyFotoFilter($rekapQuery);
 
         $rekap = $rekapQuery->selectRaw('status, count(*) as total')
             ->groupBy('status')
@@ -57,7 +72,7 @@ class LaporanController extends Controller
                 ->distinct()->orderBy('unit')->pluck('unit');
         }
 
-        return view('laporan.index', compact('absensis', 'rekap', 'bulan', 'tahun', 'pegawais', 'userId', 'unit', 'units'));
+        return view('laporan.index', compact('absensis', 'rekap', 'bulan', 'tahun', 'pegawais', 'userId', 'unit', 'units', 'foto'));
     }
 
     public function export(Request $request)

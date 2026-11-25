@@ -37,10 +37,12 @@ class AbsensiController extends Controller
 
     public function checkIn(Request $request)
     {
+        $cameraEnabled = (bool) config('attendance.web_camera_enabled', true);
+
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'foto' => 'required|image|max:3072',
+            'foto' => ($cameraEnabled ? 'required' : 'nullable') . '|image|max:3072',
         ]);
 
         $user = auth()->user();
@@ -56,7 +58,9 @@ class AbsensiController extends Controller
             return back()->with('error', 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter.');
         }
 
-        $fotoPath = $request->file('foto')->store('foto-absensi', 'public');
+        $fotoPath = $request->hasFile('foto')
+            ? $request->file('foto')->store('foto-absensi', 'public')
+            : null;
 
         if ($user->jenis_absensi === 'normal') {
             $hariIni = Carbon::today()->dayOfWeek;
@@ -105,10 +109,12 @@ class AbsensiController extends Controller
 
     public function checkOut(Request $request)
     {
+        $cameraEnabled = (bool) config('attendance.web_camera_enabled', true);
+
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'foto' => 'required|image|max:3072',
+            'foto' => ($cameraEnabled ? 'required' : 'nullable') . '|image|max:3072',
         ]);
 
         $user = auth()->user();
@@ -128,7 +134,9 @@ class AbsensiController extends Controller
             return back()->with('error', 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter.');
         }
 
-        $fotoPath = $request->file('foto')->store('foto-absensi', 'public');
+        $fotoPath = $request->hasFile('foto')
+            ? $request->file('foto')->store('foto-absensi', 'public')
+            : null;
         $absensi->update([
             'check_out' => Carbon::now(),
             'foto_check_out' => $fotoPath,

@@ -139,7 +139,8 @@
                     <span id="gpsText">Mendapatkan lokasi GPS...</span>
                 </div>
 
-                {{-- Kamera --}}
+                {{-- Kamera (bisa diatur lewat config attendance.web_camera_enabled) --}}
+                @if(config('attendance.web_camera_enabled', true))
                 <div style="margin-bottom:14px">
                     <div id="cam-container">
                         <div id="cam-placeholder" style="color:#666;text-align:center">
@@ -162,6 +163,7 @@
                         </button>
                     </div>
                 </div>
+                @endif
 
                 @if(!$absensiHariIni?->check_in)
                 <form action="{{ route('absensi.checkin') }}" method="POST" enctype="multipart/form-data" id="formCheckin">
@@ -282,6 +284,7 @@
 @push('scripts')
 @if(!auth()->user()->isAdmin())
 <script>
+const webCameraEnabled = @json((bool) config('attendance.web_camera_enabled', true));
 let stream = null, capturedBlob = null, gpsLat = null, gpsLng = null;
 
 navigator.geolocation.getCurrentPosition(pos => {
@@ -344,7 +347,7 @@ function ulangi() {
 }
 
 function updateBtn() {
-    const ready = capturedBlob && gpsLat;
+    const ready = (webCameraEnabled ? Boolean(capturedBlob) : true) && Boolean(gpsLat);
     ['btnCheckin','btnCheckout'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = !ready;
@@ -352,18 +355,19 @@ function updateBtn() {
 }
 
 function submitAbsensi(type) {
-    if (!capturedBlob) { alert('Ambil foto selfie terlebih dahulu.'); return false; }
+    if (webCameraEnabled && !capturedBlob) { alert('Ambil foto selfie terlebih dahulu.'); return false; }
     if (!gpsLat) { alert('GPS belum tersedia.'); return false; }
-    const file = new File([capturedBlob], 'foto.jpg', { type: 'image/jpeg' });
-    const dt = new DataTransfer(); dt.items.add(file);
     if (type === 'in') {
         document.getElementById('latIn').value = gpsLat;
         document.getElementById('lngIn').value = gpsLng;
-        document.getElementById('fotoIn').files = dt.files;
     } else {
         document.getElementById('latOut').value = gpsLat;
         document.getElementById('lngOut').value = gpsLng;
-        document.getElementById('fotoOut').files = dt.files;
+    }
+    if (webCameraEnabled && capturedBlob) {
+        const file = new File([capturedBlob], 'foto.jpg', { type: 'image/jpeg' });
+        const dt = new DataTransfer(); dt.items.add(file);
+        document.getElementById(type === 'in' ? 'fotoIn' : 'fotoOut').files = dt.files;
     }
     return true;
 }

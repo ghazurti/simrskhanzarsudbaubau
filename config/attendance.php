@@ -18,4 +18,7 @@ return [
     'hari_libur' => [0, 6],
 
     'toleransi_menit' => 15,
+
+    // Aktifkan/nonaktifkan fitur kamera selfie di absensi web tanpa menghapus kodenya
+    'web_camera_enabled' => env('ABSENSI_WEB_CAMERA', true),
 ];
