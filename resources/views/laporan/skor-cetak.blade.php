@@ -143,7 +143,7 @@
         </tr>
         <tr>
             <td style="text-align: center;">3</td>
-            <td>Pangkat/Gol</td>
+            <td>Status</td>
             <td>{{ $pejabatPenilai->pangkat_gol ?? '-' }}</td>
             <td>{{ $pegawai->pangkat_gol ?? '-' }}</td>
         </tr>

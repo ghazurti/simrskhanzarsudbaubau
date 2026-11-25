@@ -157,7 +157,7 @@
                         ['No','Uraian','Data'],
                         [1,'Nama',$pegawai->name],
                         [2,'NIP',$pegawai->nip ?? '-'],
-                        [3,'Pangkat/Gol',$pegawai->pangkat_gol ?? '-'],
+                        [3,'Status',$pegawai->pangkat_gol ?? '-'],
                         [4,'Jabatan',$pegawai->jabatan ?? '-'],
                         [5,'Unit',$pegawai->unit ?? '-'],
                     ] as $i => $row)

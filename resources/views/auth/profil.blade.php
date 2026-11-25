@@ -73,7 +73,7 @@
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
                             <div><span style="color:var(--gray-400)">Jabatan:</span> <span style="font-weight:500">{{ $user->jabatan ?? '-' }}</span></div>
                             <div><span style="color:var(--gray-400)">Unit:</span> <span style="font-weight:500">{{ $user->unit ?? '-' }}</span></div>
-                            <div><span style="color:var(--gray-400)">Pangkat/Gol:</span> <span style="font-weight:500">{{ $user->pangkat_gol ?? '-' }}</span></div>
+                            <div><span style="color:var(--gray-400)">Status:</span> <span style="font-weight:500">{{ $user->pangkat_gol ?? '-' }}</span></div>
                             <div><span style="color:var(--gray-400)">NIP:</span> <span style="font-weight:500">{{ $user->nip ?? '-' }}</span></div>
                         </div>
                     </div>

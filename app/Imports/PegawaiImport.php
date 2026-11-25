@@ -41,7 +41,7 @@ class PegawaiImport implements ToCollection, WithHeadingRow
                         'nip'           => trim($row['nip'] ?? '') ?: null,
                         'no_hp'         => trim($row['no_hp'] ?? '') ?: null,
                         'jabatan'       => trim($row['jabatan'] ?? '') ?: null,
-                        'pangkat_gol'   => trim($row['pangkat_gol'] ?? '') ?: null,
+                        'pangkat_gol'   => trim($row['status'] ?? $row['pangkat_gol'] ?? '') ?: null,
                         'unit'          => trim($row['unit'] ?? '') ?: null,
                         'jenis_absensi' => $jenisAbsensi,
                         'role'          => $role,

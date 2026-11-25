@@ -191,7 +191,7 @@
                     <span><code>nip</code> — opsional</span>
                     <span><code>no_hp</code> — opsional</span>
                     <span><code>jabatan</code> — opsional</span>
-                    <span><code>pangkat_gol</code> — opsional</span>
+                    <span><code>status</code> — opsional</span>
                     <span><code>unit</code> — opsional</span>
                     <span><code>jenis_absensi</code> — <em>normal</em> / <em>shift</em></span>
                     <span><code>role</code> — <em>pegawai</em> / <em>kepala_unit</em></span>

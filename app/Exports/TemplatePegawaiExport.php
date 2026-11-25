@@ -16,10 +16,10 @@ class TemplatePegawaiExport implements FromArray, WithStyles, WithColumnWidths, 
     {
         return [
             // Row 1: Header
-            ['nama', 'email', 'nik', 'nip', 'no_hp', 'jabatan', 'pangkat_gol', 'unit', 'jenis_absensi', 'role'],
+            ['nama', 'email', 'nik', 'nip', 'no_hp', 'jabatan', 'status', 'unit', 'jenis_absensi', 'role'],
             // Row 2: Contoh data
-            ['Budi Santoso', '', '1234567890123456', '198001012005011001', '08123456789', 'Perawat Ahli Muda', 'Penata / III-c', 'IGD', 'normal', 'pegawai'],
-            ['Siti Rahayu', '', '1234567890123457', '', '08987654321', 'Dokter Spesialis', 'Pembina / IV-a', 'Poli Dalam', 'shift', 'pegawai'],
+            ['Budi Santoso', '', '1234567890123456', '198001012005011001', '08123456789', 'Perawat Ahli Muda', 'PNS', 'IGD', 'normal', 'pegawai'],
+            ['Siti Rahayu', '', '1234567890123457', '', '08987654321', 'Dokter Spesialis', 'PPPK', 'Poli Dalam', 'shift', 'pegawai'],
             // Row 3: Keterangan
             ['--- KETERANGAN ---', '', '', '', '', '', '', '', '', ''],
             ['email: kosongkan jika tidak ada (otomatis: nik@rsud-baubau.go.id)', '', '', '', '', '', '', '', '', ''],

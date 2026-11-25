@@ -89,8 +89,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" style="font-weight:600;margin-bottom:8px;display:block">Pangkat / Golongan</label>
+                        <label class="form-label" style="font-weight:600;margin-bottom:8px;display:block">Status</label>
                         <input type="text" name="pangkat_gol" class="form-control" value="{{ old('pangkat_gol', $pegawai->pangkat_gol) }}" 
+                            placeholder="Contoh: PNS / PPPK / Kontrak"
                             style="padding:12px 16px;border-radius:10px;border:1.5px solid var(--gray-200)">
                     </div>
                 </div>
