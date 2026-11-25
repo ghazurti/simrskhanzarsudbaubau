@@ -32,14 +32,14 @@ class AuthController extends Controller
 
         $credentials = $request->only('email', 'password');
 
-        if (!$token = JWTAuth::attempt($credentials)) {
+        if (!$token = auth('api')->attempt($credentials)) {
             RateLimiter::hit($key, 60); // blokir 60 detik setelah 5 gagal
             return response()->json(['message' => 'Email atau password salah'], 401);
         }
 
         $user = auth('api')->user();
 
-        if (!$user->isAdmin()) {
+        if ($user && !$user->isAdmin()) {
             $deviceId = trim((string) ($request->input('device_id') ?: $request->header('X-Device-Id', '')));
             $deviceName = trim((string) $request->input('device_name', ''));
 
