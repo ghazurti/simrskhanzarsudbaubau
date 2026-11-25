@@ -337,9 +337,14 @@
 
 <div class="page-header">
     <div class="page-title">Dashboard</div>
-    <div class="page-sub">
-        Selamat datang, <strong>{{ $user->name }}</strong>! —
-        {{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y') }}
+    <div class="page-sub" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>Selamat datang, <strong>{{ $user->name }}</strong>!</span>
+        @if($user->unit)
+        <span style="background:var(--primary-light);color:var(--primary);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px">
+            <i class="bi bi-building"></i> Unit: {{ $user->unit }}
+        </span>
+        @endif
+        <span>— {{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y') }}</span>
     </div>
 </div>
 
