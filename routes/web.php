@@ -72,6 +72,7 @@ Route::middleware(['auth'])->group(function () {
         // Persetujuan Izin/Cuti
         Route::post('/izin/{izin}/approve', [IzinController::class, 'approve'])->name('izin.approve');
         Route::post('/izin/{izin}/reject', [IzinController::class, 'reject'])->name('izin.reject');
+        Route::post('/izin/{izin}/upload-file', [IzinController::class, 'uploadFile'])->name('izin.upload-file');
 
         // Persetujuan Lembur
         Route::post('/lembur/{lembur}/approve', [\App\Http\Controllers\Web\LemburController::class, 'approve'])->name('lembur.approve');

@@ -25,11 +25,21 @@ class KoreksiAbsensiController extends Controller
 
     public function store(Request $request)
     {
+        $batasJam = config('attendance.koreksi_batas_jam', '22:00');
+        if (Carbon::now()->format('H:i') > $batasJam) {
+            return back()
+                ->with('error', "Pengajuan koreksi absensi hanya dibuka sampai pukul {$batasJam} WITA.")
+                ->withInput();
+        }
+
         $request->validate([
             'tanggal' => 'required|date|before_or_equal:today',
-            'jam_masuk' => 'nullable|date_format:H:i',
-            'jam_keluar' => 'nullable|date_format:H:i',
-            'alasan' => 'required|string',
+            'jam_masuk' => 'nullable|date_format:H:i|required_without:jam_keluar',
+            'jam_keluar' => 'nullable|date_format:H:i|required_without:jam_masuk',
+            'alasan' => 'required|string|max:500',
+        ], [
+            'jam_masuk.required_without' => 'Isi minimal salah satu antara Jam Masuk atau Jam Keluar.',
+            'jam_keluar.required_without' => 'Isi minimal salah satu antara Jam Masuk atau Jam Keluar.',
         ]);
 
         KoreksiAbsensi::create([
@@ -49,16 +59,22 @@ class KoreksiAbsensiController extends Controller
 
         $koreksi->update(['status' => 'approved', 'catatan_admin' => $request->catatan_admin]);
 
-        // Update atau Buat data Absensi asli
-        $tanggalStr = \Carbon\Carbon::parse($koreksi->tanggal)->format('Y-m-d');
-        $absensi = Absensi::updateOrCreate(
-            ['user_id' => $koreksi->user_id, 'tanggal' => $tanggalStr],
-            [
-                'check_in' => $koreksi->jam_masuk ? Carbon::parse($tanggalStr . ' ' . $koreksi->jam_masuk) : null,
-                'check_out' => $koreksi->jam_keluar ? Carbon::parse($tanggalStr . ' ' . $koreksi->jam_keluar) : null,
-                'status' => 'hadir', // Koreksi biasanya dianggap hadir normal
-            ]
-        );
+        // Update atau buat data Absensi asli tanpa menghapus jam yang tidak dikoreksi
+        $tanggalStr = Carbon::parse($koreksi->tanggal)->format('Y-m-d');
+        $absensi = Absensi::firstOrNew([
+            'user_id' => $koreksi->user_id,
+            'tanggal' => $tanggalStr,
+        ]);
+
+        if ($koreksi->jam_masuk) {
+            $absensi->check_in = Carbon::parse($tanggalStr . ' ' . $koreksi->jam_masuk);
+        }
+        if ($koreksi->jam_keluar) {
+            $absensi->check_out = Carbon::parse($tanggalStr . ' ' . $koreksi->jam_keluar);
+            $absensi->is_lupa_absen = false;
+        }
+        $absensi->status = 'hadir';
+        $absensi->save();
 
         return back()->with('success', 'Koreksi disetujui dan data absensi telah diperbarui.');
     }
@@ -79,6 +95,10 @@ class KoreksiAbsensiController extends Controller
 
     public function destroy(KoreksiAbsensi $koreksi)
     {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $koreksi->user_id !== $user->id) {
+            abort(403);
+        }
         if ($koreksi->status !== 'pending') {
             return back()->with('error', 'Tidak dapat menghapus pengajuan yang sudah diproses.');
         }

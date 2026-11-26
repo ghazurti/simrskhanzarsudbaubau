@@ -6,23 +6,39 @@
 <div style="font-size:22px;font-weight:800;color:var(--gray-900);margin-bottom:4px">{{ auth()->user()->isAdmin() ? 'Persetujuan Cuti' : 'Cuti & Izin' }}</div>
 <div style="font-size:13px;color:var(--gray-400);margin-bottom:24px">{{ auth()->user()->isAdmin() ? 'Proses pengajuan izin dan cuti pegawai' : 'Kelola pengajuan izin, sakit, dan cuti Anda' }}</div>
 
-<div style="display:grid;grid-template-columns: {{ auth()->user()->isAdmin() ? '1fr' : '340px 1fr' }}; gap:20px">
+<div style="display:grid;grid-template-columns: 340px 1fr; gap:20px; align-items:start">
 
-    {{-- Form (Hanya untuk Pegawai) --}}
-    @if(!auth()->user()->isAdmin())
+    {{-- Form Input (Kepegawaian/Admin maupun Pegawai) --}}
     <div class="card" style="align-self:start">
         <div class="card-header">
-            <span><i class="bi bi-plus-circle me-2" style="color:var(--primary)"></i>Ajukan Izin</span>
+            <span>
+                <i class="bi bi-plus-circle me-2" style="color:var(--primary)"></i>
+                {{ auth()->user()->isAdmin() ? 'Input Cuti / Izin (Kepegawaian)' : 'Ajukan Izin' }}
+            </span>
         </div>
         <div class="card-body">
             <form action="{{ route('izin.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
+                @if(auth()->user()->isAdmin())
+                <div class="form-group">
+                    <label class="form-label">Pegawai</label>
+                    <select name="user_id" class="form-control form-select" required>
+                        <option value="">-- Pilih Pegawai --</option>
+                        @foreach($pegawais as $p)
+                        <option value="{{ $p->id }}" {{ old('user_id')==$p->id?'selected':'' }}>
+                            {{ $p->name }}{{ $p->unit ? ' (' . $p->unit . ')' : '' }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
                 <div class="form-group">
                     <label class="form-label">Jenis</label>
+                    @php $defaultJenis = old('jenis', auth()->user()->isAdmin() ? 'cuti' : 'izin'); @endphp
                     <select name="jenis" class="form-control form-select" required>
-                        <option value="izin" {{ old('jenis')=='izin'?'selected':'' }}>📋 Izin</option>
-                        <option value="sakit" {{ old('jenis')=='sakit'?'selected':'' }}>🏥 Sakit</option>
-                        <option value="cuti" {{ old('jenis')=='cuti'?'selected':'' }}>🌴 Cuti</option>
+                        <option value="cuti" {{ $defaultJenis=='cuti'?'selected':'' }}>🌴 Cuti</option>
+                        <option value="izin" {{ $defaultJenis=='izin'?'selected':'' }}>📋 Izin</option>
+                        <option value="sakit" {{ $defaultJenis=='sakit'?'selected':'' }}>🏥 Sakit</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -36,20 +52,28 @@
                 <div class="form-group">
                     <label class="form-label">Keterangan</label>
                     <textarea name="keterangan" class="form-control" rows="3"
-                        placeholder="Jelaskan alasan izin..." required>{{ old('keterangan') }}</textarea>
+                        placeholder="{{ auth()->user()->isAdmin() ? 'Contoh: Cuti Tahunan sesuai SK...' : 'Jelaskan alasan izin...' }}" required>{{ old('keterangan') }}</textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">File Pendukung <span style="color:var(--gray-400);font-weight:400">(opsional)</span></label>
+                    <label class="form-label">
+                        {{ auth()->user()->isAdmin() ? 'Berkas / Surat Cuti' : 'File Pendukung' }}
+                        <span style="color:var(--gray-400);font-weight:400">(opsional)</span>
+                    </label>
                     <input type="file" name="file_pendukung" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
-                    <div class="form-text">PDF, JPG, PNG — maks 2MB</div>
+                    <div class="form-text">PDF, JPG, PNG — maks 5MB</div>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:11px">
-                    <i class="bi bi-send"></i> Ajukan Sekarang
+                    <i class="bi bi-{{ auth()->user()->isAdmin() ? 'upload' : 'send' }}"></i>
+                    {{ auth()->user()->isAdmin() ? 'Simpan & Upload Berkas' : 'Ajukan Sekarang' }}
                 </button>
+                @if(auth()->user()->isAdmin())
+                <div style="font-size:11px;color:var(--gray-400);margin-top:8px">
+                    Input oleh Kepegawaian otomatis berstatus <strong>Disetujui</strong>.
+                </div>
+                @endif
             </form>
         </div>
     </div>
-    @endif
 
     {{-- Daftar --}}
     <div class="card">
@@ -116,14 +140,24 @@
                             </span>
                         </td>
                         <td>
-                            @if($izin->file_pendukung)
-                            <a href="{{ asset('storage/' . $izin->file_pendukung) }}" target="_blank"
-                                class="btn btn-outline btn-sm btn-icon" title="Lihat Lampiran">
-                                <i class="bi bi-paperclip"></i>
-                            </a>
-                            @else
-                            <span style="color:var(--gray-300);font-size:12px">n/a</span>
-                            @endif
+                            <div style="display:flex;gap:6px;align-items:center">
+                                @if($izin->file_pendukung)
+                                <a href="{{ asset('storage/' . $izin->file_pendukung) }}" target="_blank"
+                                    class="btn btn-outline btn-sm btn-icon" title="Lihat Berkas">
+                                    <i class="bi bi-paperclip"></i>
+                                </a>
+                                @else
+                                <span style="color:var(--gray-300);font-size:12px">—</span>
+                                @endif
+                                @if(auth()->user()->isAdmin())
+                                <button type="button"
+                                    onclick="showUploadModal({{ $izin->id }}, '{{ addslashes($izin->user->name ?? '-') }}')"
+                                    class="btn btn-outline btn-sm btn-icon"
+                                    title="{{ $izin->file_pendukung ? 'Ganti Berkas Cuti' : 'Upload Berkas Cuti' }}">
+                                    <i class="bi bi-upload"></i>
+                                </button>
+                                @endif
+                            </div>
                         </td>
                         <td style="text-align: right">
                             <div style="display:flex;gap:6px;justify-content: flex-end">
@@ -187,6 +221,27 @@
     </div>
 </div>
 
+{{-- Upload Berkas Modal (Kepegawaian/Admin) --}}
+<div id="uploadModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+    <div style="background:#fff;width:90%;max-width:420px;border-radius:16px;padding:24px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)">
+        <h3 style="margin-top:0;font-size:18px;font-weight:700;margin-bottom:4px">Upload Berkas Cuti / Izin</h3>
+        <p id="uploadModalSub" style="font-size:13px;color:var(--gray-500);margin-bottom:18px"></p>
+
+        <form id="uploadForm" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="form-group">
+                <label class="form-label">Pilih File Berkas</label>
+                <input type="file" name="file_pendukung" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                <div class="form-text">PDF, JPG, PNG — maks 5MB</div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px">
+                <button type="button" onclick="hideUploadModal()" class="btn btn-outline" style="flex:1;justify-content:center">Batal</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center">Upload Berkas</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     function showRejectModal(id) {
         const modal = document.getElementById('rejectModal');
@@ -196,6 +251,16 @@
     }
     function hideRejectModal() {
         document.getElementById('rejectModal').style.display = 'none';
+    }
+    function showUploadModal(id, nama) {
+        const modal = document.getElementById('uploadModal');
+        const form = document.getElementById('uploadForm');
+        document.getElementById('uploadModalSub').textContent = 'Pegawai: ' + nama;
+        form.action = `/izin/${id}/upload-file`;
+        modal.style.display = 'flex';
+    }
+    function hideUploadModal() {
+        document.getElementById('uploadModal').style.display = 'none';
     }
 </script>
 @endsection

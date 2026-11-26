@@ -19,29 +19,41 @@
             <span><i class="bi bi-plus-circle me-2" style="color:var(--primary)"></i>Form Koreksi</span>
         </div>
         <div class="card-body">
+            @php
+                $batasJam = config('attendance.koreksi_batas_jam', '22:00');
+                $lewatBatas = \Carbon\Carbon::now()->format('H:i') > $batasJam;
+            @endphp
+            <div style="background:{{ $lewatBatas ? '#fef2f2' : '#eff6ff' }};border:1px solid {{ $lewatBatas ? '#fecaca' : '#bfdbfe' }};border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:{{ $lewatBatas ? '#dc2626' : '#1d4ed8' }};line-height:1.4">
+                <i class="bi bi-clock-history me-1"></i>
+                @if($lewatBatas)
+                    Waktu pengajuan hari ini sudah ditutup (batas pukul <strong>{{ $batasJam }} WITA</strong>). Silakan ajukan kembali besok.
+                @else
+                    Batas waktu pengajuan koreksi setiap hari sampai pukul <strong>{{ $batasJam }} WITA</strong>.
+                @endif
+            </div>
             <form action="{{ route('koreksi.store') }}" method="POST">
                 @csrf
                 <div class="form-group">
                     <label class="form-label">Tanggal yang Diperbaiki</label>
-                    <input type="date" name="tanggal" class="form-control" max="{{ date('Y-m-d') }}" required>
+                    <input type="date" name="tanggal" class="form-control" max="{{ date('Y-m-d') }}" value="{{ old('tanggal') }}" required>
                 </div>
                 <div style="display:grid;grid-template-columns: 1fr 1fr; gap:12px">
                     <div class="form-group">
                         <label class="form-label">Jam Masuk (Baru)</label>
-                        <input type="time" name="jam_masuk" class="form-control">
+                        <input type="time" name="jam_masuk" class="form-control" value="{{ old('jam_masuk') }}">
                         <div style="font-size:10px; color:var(--gray-400); margin-top:4px">Kosongkan jika tidak ada</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Jam Keluar (Baru)</label>
-                        <input type="time" name="jam_keluar" class="form-control">
+                        <input type="time" name="jam_keluar" class="form-control" value="{{ old('jam_keluar') }}">
                         <div style="font-size:10px; color:var(--gray-400); margin-top:4px">Kosongkan jika tidak ada</div>
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Alasan Perbaikan</label>
-                    <textarea name="alasan" class="form-control" rows="3" placeholder="Contoh: Lupa absen karena mati lampu..." required></textarea>
+                    <textarea name="alasan" class="form-control" rows="3" placeholder="Contoh: Lupa absen karena mati lampu..." required>{{ old('alasan') }}</textarea>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px">
+                <button type="submit" class="btn btn-primary" {{ $lewatBatas ? 'disabled' : '' }} style="width:100%; justify-content:center; padding:12px">
                     <i class="bi bi-send"></i> Kirim Pengajuan
                 </button>
             </form>
@@ -148,7 +160,7 @@
                 @csrf
                 <div class="form-group">
                     <label class="form-label">Alasan Penolakan</label>
-                    <textarea name="catatan_admin" class="form-control" rows="3" placeholder="Masukkan alasan penolakan..."></textarea>
+                    <textarea name="catatan_admin" class="form-control" rows="3" placeholder="Masukkan alasan penolakan..." required></textarea>
                 </div>
                 <div style="display:flex; gap:10px; justify-content:flex-end">
                     <button type="button" class="btn btn-outline" onclick="closeRejectModal()">Batal</button>

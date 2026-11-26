@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AbsensiController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\IzinController;
+use App\Http\Controllers\Api\KoreksiAbsensiController;
 use App\Http\Controllers\Api\PegawaiController;
 use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\SkorController;
@@ -42,6 +43,11 @@ Route::middleware('auth:api')->name('api.')->group(function () {
 
         // Izin
         Route::apiResource('izin', IzinController::class)->except(['update', 'edit', 'create']);
+
+        // Koreksi Absensi
+        Route::get('/koreksi', [KoreksiAbsensiController::class, 'index']);
+        Route::post('/koreksi', [KoreksiAbsensiController::class, 'store']);
+        Route::delete('/koreksi/{koreksi}', [KoreksiAbsensiController::class, 'destroy']);
 
         // Fingerprint
         Route::post('/fingerprint/enroll', [\App\Http\Controllers\Api\FingerprintController::class, 'enroll']);

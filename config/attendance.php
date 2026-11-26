@@ -21,4 +21,7 @@ return [
 
     // Aktifkan/nonaktifkan fitur kamera selfie di absensi web tanpa menghapus kodenya
     'web_camera_enabled' => env('ABSENSI_WEB_CAMERA', true),
+
+    // Batas jam pengajuan koreksi absensi per hari (format HH:MM, WITA)
+    'koreksi_batas_jam' => env('ABSENSI_KOREKSI_BATAS_JAM', '22:00'),
 ];
