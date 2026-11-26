@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Absensi;
+use App\Models\AuditLog;
 use App\Models\Libur;
 use App\Models\Shift;
 use Carbon\Carbon;
@@ -46,11 +47,17 @@ class AbsensiController extends Controller
     public function checkIn(Request $request)
     {
         $request->validate([
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
             'foto' => 'nullable|image|max:3072',
             'shift_id' => 'nullable|exists:shifts,id',
+            'is_mocked' => 'nullable|boolean',
+            'accuracy' => 'nullable|numeric|min:0',
         ]);
+
+        if ($securityError = $this->validateLocationSecurity($request, 'check_in')) {
+            return $securityError;
+        }
 
         $user = auth()->user();
         $today = Carbon::today()->toDateString();
@@ -61,18 +68,6 @@ class AbsensiController extends Controller
 
         if ($existing && $existing->check_in) {
             return response()->json(['message' => 'Anda sudah melakukan absen masuk hari ini'], 422);
-        }
-
-        // Cek jarak
-        $locLat = config('attendance.latitude');
-        $locLng = config('attendance.longitude');
-        $radius = config('attendance.radius');
-        $jarak = $this->hitungJarak($request->latitude, $request->longitude, $locLat, $locLng);
-
-        if ($jarak > $radius) {
-            return response()->json([
-                'message' => 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter'
-            ], 422);
         }
 
         $fotoPath = $request->hasFile('foto')
@@ -127,10 +122,16 @@ class AbsensiController extends Controller
     public function checkOut(Request $request)
     {
         $request->validate([
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
             'foto' => 'nullable|image|max:3072',
+            'is_mocked' => 'nullable|boolean',
+            'accuracy' => 'nullable|numeric|min:0',
         ]);
+
+        if ($securityError = $this->validateLocationSecurity($request, 'check_out')) {
+            return $securityError;
+        }
 
         $user = auth()->user();
         $today = Carbon::today()->toDateString();
@@ -189,6 +190,55 @@ class AbsensiController extends Controller
         ];
 
         return response()->json(['rekap' => $rekap, 'detail' => $absensis]);
+    }
+
+    private function validateLocationSecurity(Request $request, string $aksi)
+    {
+        $user = auth()->user();
+
+        if ($request->boolean('is_mocked')) {
+            try {
+                AuditLog::create([
+                    'user_id' => $user?->id,
+                    'action' => 'fake_gps_blocked',
+                    'model_type' => 'Absensi',
+                    'model_id' => null,
+                    'new_values' => [
+                        'aksi' => $aksi,
+                        'latitude' => $request->latitude,
+                        'longitude' => $request->longitude,
+                        'accuracy' => $request->accuracy,
+                    ],
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ]);
+            } catch (\Throwable $e) {
+                // Jangan sampai error logging meloloskan Fake GPS
+            }
+
+            return response()->json([
+                'message' => 'Lokasi palsu (Fake GPS) terdeteksi. Percobaan ini telah dicatat oleh sistem.',
+            ], 422);
+        }
+
+        if ($request->filled('accuracy') && (float) $request->accuracy > 100) {
+            return response()->json([
+                'message' => 'Akurasi GPS terlalu rendah (' . round((float) $request->accuracy) . ' meter). Pindah ke area lebih terbuka dan coba lagi.',
+            ], 422);
+        }
+
+        $locLat = config('attendance.latitude');
+        $locLng = config('attendance.longitude');
+        $radius = config('attendance.radius');
+        $jarak = $this->hitungJarak($request->latitude, $request->longitude, $locLat, $locLng);
+
+        if ($jarak > $radius) {
+            return response()->json([
+                'message' => 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter',
+            ], 422);
+        }
+
+        return null;
     }
 
     private function hitungJarak($lat1, $lon1, $lat2, $lon2)

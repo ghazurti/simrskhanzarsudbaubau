@@ -24,4 +24,7 @@ return [
 
     // Batas jam pengajuan koreksi absensi per hari (format HH:MM, WITA)
     'koreksi_batas_jam' => env('ABSENSI_KOREKSI_BATAS_JAM', '22:00'),
+
+    // Tombol scanner sidik jari USB di web (nonaktif secara default)
+    'web_fingerprint_enabled' => env('ABSENSI_WEB_FINGERPRINT', false),
 ];

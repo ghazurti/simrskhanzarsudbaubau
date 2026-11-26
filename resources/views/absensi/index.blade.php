@@ -106,12 +106,14 @@
                 </div>
                 @endif
 
-                {{-- Tombol Fingerprint --}}
+                {{-- Tombol Fingerprint USB (dinonaktifkan default agar tidak muncul di HP) --}}
+                @if(config('attendance.web_fingerprint_enabled', false))
                 <button type="button" class="btn-finger" onclick="scanFingerprint()">
                     <i class="bi bi-fingerprint"></i>
                     <div style="font-weight: 700; font-size: 14px;">ABSEN SIDIK JARI</div>
                     <div style="font-size: 11px;">Tempelkan jari pada alat U.are.U 4500</div>
                 </button>
+                @endif
 
                 <div class="time-display">
                     <div class="time-box">
@@ -405,21 +407,11 @@ async function scanFingerprint() {
             Swal.fire('Gagal', 'Sidik jari tidak terbaca dengan jelas', 'error');
         }
     } catch (err) {
-        // Karena ini demo, jika middleware tidak ada, kita simulasi sukses
-        console.warn('Middleware tidak ditemukan, menjalankan simulasi...');
-        setTimeout(() => {
-            Swal.fire({
-                icon: 'question',
-                title: 'Simulasi Sidik Jari',
-                text: 'Koneksi ke alat tidak ditemukan. Jalankan simulasi absen?',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, Absen (Simulasi)'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    submitFingerprint('SAMPLE_FINGERPRINT_TEMPLATE_DATA');
-                }
-            });
-        }, 1500);
+        Swal.fire(
+            'Alat Tidak Terdeteksi',
+            'Scanner sidik jari USB tidak terhubung di perangkat ini. Gunakan absensi GPS & kamera selfie.',
+            'error'
+        );
     }
 }
 
