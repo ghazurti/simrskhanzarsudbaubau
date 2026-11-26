@@ -27,4 +27,7 @@ return [
 
     // Tombol scanner sidik jari USB di web (nonaktif secara default)
     'web_fingerprint_enabled' => env('ABSENSI_WEB_FINGERPRINT', false),
+
+    // Versi minimal build APK Flutter yang diizinkan (APK lama otomatis ditolak)
+    'min_app_version' => (int) env('ABSENSI_MIN_APP_VERSION', 2),
 ];

@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'device.bound' => \App\Http\Middleware\VerifyDeviceBinding::class,
+            'app.version' => \App\Http\Middleware\VerifyAppVersion::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

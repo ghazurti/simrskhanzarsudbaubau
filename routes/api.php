@@ -10,17 +10,17 @@ use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\SkorController;
 use Illuminate\Support\Facades\Route;
 
-// Auth (public)
-Route::post('/login', [AuthController::class, 'login']);
+// Auth (public) — wajib APK versi terbaru
+Route::post('/login', [AuthController::class, 'login'])->middleware('app.version');
 
 // Protected routes
 Route::middleware('auth:api')->name('api.')->group(function () {
 
-    // Logout tetap bisa walau perangkat sudah direset admin
+    // Logout tetap bisa walau perangkat sudah direset admin atau APK lama
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Rute yang wajib cocok dengan perangkat terdaftar (1 HP = 1 pegawai)
-    Route::middleware('device.bound')->group(function () {
+    // Rute yang wajib cocok dengan perangkat terdaftar (1 HP = 1 pegawai) & APK versi terbaru
+    Route::middleware(['app.version', 'device.bound'])->group(function () {
         // Auth
         Route::post('/refresh', [AuthController::class, 'refresh']);
         Route::get('/me', [AuthController::class, 'me']);
