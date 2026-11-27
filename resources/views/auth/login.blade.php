@@ -368,7 +368,6 @@
                     <i class="bi bi-envelope icon-left"></i>
                     <input type="email" name="email" id="email"
                         value="{{ old('email') }}"
-                        placeholder="nama@rsud-baubau.go.id"
                         required autofocus>
                 </div>
             </div>
@@ -378,7 +377,7 @@
                 <div class="input-wrap">
                     <i class="bi bi-lock icon-left"></i>
                     <input type="password" name="password" id="password"
-                        placeholder="Masukkan password" required>
+                        required>
                     <button type="button" class="icon-right" onclick="togglePass()" tabindex="-1">
                         <i class="bi bi-eye" id="eye-icon"></i>
                     </button>
