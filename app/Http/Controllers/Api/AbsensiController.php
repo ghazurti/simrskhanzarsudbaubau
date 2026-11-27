@@ -55,12 +55,22 @@ class AbsensiController extends Controller
             'accuracy' => 'nullable|numeric|min:0',
         ]);
 
-        if ($securityError = $this->validateLocationSecurity($request, 'check_in')) {
-            return $securityError;
-        }
-
         $user = auth()->user();
         $today = Carbon::today()->toDateString();
+
+        // Cari jadwal shift hari ini lebih dulu untuk cek apakah On-Call (bebas radius jarak)
+        $shift = null;
+        if ($request->filled('shift_id')) {
+            $shift = Shift::where('id', $request->shift_id)->where('user_id', $user->id)->first();
+        }
+        if (!$shift) {
+            $shift = Shift::where('user_id', $user->id)->whereDate('tanggal', $today)->first();
+        }
+        $isOnCall = $this->isOnCallShift($shift);
+
+        if ($securityError = $this->validateLocationSecurity($request, 'check_in', !$isOnCall)) {
+            return $securityError;
+        }
 
         $existing = Absensi::where('user_id', $user->id)
             ->where('tanggal', $today)
@@ -73,15 +83,6 @@ class AbsensiController extends Controller
         $fotoPath = $request->hasFile('foto')
             ? $request->file('foto')->store('foto-absensi', 'public')
             : null;
-
-        // Cari jadwal shift hari ini (baik dari request shift_id maupun dari tabel shifts hari ini untuk user tersebut)
-        $shift = null;
-        if ($request->filled('shift_id')) {
-            $shift = Shift::where('id', $request->shift_id)->where('user_id', $user->id)->first();
-        }
-        if (!$shift) {
-            $shift = Shift::where('user_id', $user->id)->whereDate('tanggal', $today)->first();
-        }
 
         // Pegawai shift murni (bukan IT hybrid) wajib memiliki jadwal shift
         if ($user->jenis_absensi === 'shift' && !$user->isItUnit() && !$shift) {
@@ -152,14 +153,11 @@ class AbsensiController extends Controller
             'accuracy' => 'nullable|numeric|min:0',
         ]);
 
-        if ($securityError = $this->validateLocationSecurity($request, 'check_out')) {
-            return $securityError;
-        }
-
         $user = auth()->user();
         $today = Carbon::today()->toDateString();
 
-        $absensi = Absensi::where('user_id', $user->id)
+        $absensi = Absensi::with('shift')
+            ->where('user_id', $user->id)
             ->where('tanggal', $today)
             ->first();
 
@@ -176,15 +174,16 @@ class AbsensiController extends Controller
                 $s = $absensiKemarin->shift;
                 $isOvernight = $s->jenis_shift === 'malam'
                     || $s->jam_keluar <= $s->jam_masuk
-                    || str_contains(strtolower((string) $s->keterangan), 'on-call')
-                    || str_contains(strtolower((string) $s->keterangan), 'on call');
+                    || $this->isOnCallShift($s);
                 if ($isOvernight) {
                     $absensi = $absensiKemarin;
                 }
             }
-            if (false) {
-                $absensi = $absensiKemarin;
-            }
+        }
+
+        $isOnCall = $this->isOnCallShift($absensi?->shift);
+        if ($securityError = $this->validateLocationSecurity($request, 'check_out', !$isOnCall)) {
+            return $securityError;
         }
 
         if (!$absensi || !$absensi->check_in) {
@@ -239,7 +238,18 @@ class AbsensiController extends Controller
         return response()->json(['rekap' => $rekap, 'detail' => $absensis]);
     }
 
-    private function validateLocationSecurity(Request $request, string $aksi)
+    private function isOnCallShift(?Shift $shift): bool
+    {
+        if (!$shift) {
+            return false;
+        }
+        $ket = strtolower((string) $shift->keterangan);
+        return $shift->jenis_shift === 'oncall'
+            || str_contains($ket, 'on call')
+            || str_contains($ket, 'on-call');
+    }
+
+    private function validateLocationSecurity(Request $request, string $aksi, bool $enforceRadius = true)
     {
         $user = auth()->user();
 
@@ -273,15 +283,17 @@ class AbsensiController extends Controller
             ], 422);
         }
 
-        $locLat = config('attendance.latitude');
-        $locLng = config('attendance.longitude');
-        $radius = config('attendance.radius');
-        $jarak = $this->hitungJarak($request->latitude, $request->longitude, $locLat, $locLng);
+        if ($enforceRadius) {
+            $locLat = config('attendance.latitude');
+            $locLng = config('attendance.longitude');
+            $radius = config('attendance.radius');
+            $jarak = $this->hitungJarak($request->latitude, $request->longitude, $locLat, $locLng);
 
-        if ($jarak > $radius) {
-            return response()->json([
-                'message' => 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter',
-            ], 422);
+            if ($jarak > $radius) {
+                return response()->json([
+                    'message' => 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter',
+                ], 422);
+            }
         }
 
         return null;

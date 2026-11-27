@@ -52,16 +52,7 @@ class AbsensiController extends Controller
             return back()->with('error', 'Anda sudah melakukan check-in hari ini.');
         }
 
-        $jarak = $this->hitungJarak($request->latitude, $request->longitude, config("attendance.latitude"), config("attendance.longitude"));
-        if ($jarak > config("attendance.radius")) {
-            return back()->with('error', 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter.');
-        }
-
-        $fotoPath = $request->hasFile('foto')
-            ? $request->file('foto')->store('foto-absensi', 'public')
-            : null;
-
-        // Cek apakah pegawai punya jadwal shift hari ini (termasuk staf IT/SIMRS yang punya Shift Siang 14:00-21:00 atau On-Call Sabtu/Minggu)
+        // Cek jadwal shift hari ini lebih dulu untuk deteksi On-Call (bebas radius jarak)
         $shift = null;
         if ($request->filled('shift_id')) {
             $shift = Shift::where('id', $request->shift_id)->where('user_id', $user->id)->first();
@@ -69,6 +60,22 @@ class AbsensiController extends Controller
         if (!$shift) {
             $shift = Shift::where('user_id', $user->id)->whereDate('tanggal', $today)->first();
         }
+        $isOnCall = $shift && (
+            $shift->jenis_shift === 'oncall'
+            || str_contains(strtolower((string) $shift->keterangan), 'on call')
+            || str_contains(strtolower((string) $shift->keterangan), 'on-call')
+        );
+
+        if (!$isOnCall) {
+            $jarak = $this->hitungJarak($request->latitude, $request->longitude, config("attendance.latitude"), config("attendance.longitude"));
+            if ($jarak > config("attendance.radius")) {
+                return back()->with('error', 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter.');
+            }
+        }
+
+        $fotoPath = $request->hasFile('foto')
+            ? $request->file('foto')->store('foto-absensi', 'public')
+            : null;
 
         if ($user->jenis_absensi === 'shift' && !$user->isItUnit() && !$shift) {
             return back()->with('error', 'Anda belum memiliki jadwal shift hari ini. Silakan tambahkan jadwal shift terlebih dahulu.');
