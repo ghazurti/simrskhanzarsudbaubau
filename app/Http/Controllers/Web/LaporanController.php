@@ -75,6 +75,56 @@ class LaporanController extends Controller
         return view('laporan.index', compact('absensis', 'rekap', 'bulan', 'tahun', 'pegawais', 'userId', 'unit', 'units', 'foto'));
     }
 
+    public function koreksiManual(Request $request)
+    {
+        $authUser = auth()->user();
+
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'tanggal' => 'required|date',
+            'check_in' => 'nullable|date_format:H:i',
+            'check_out' => 'nullable|date_format:H:i',
+            'status' => 'required|in:hadir,terlambat,izin,sakit,alpha',
+            'alasan' => 'required|string|max:255',
+        ]);
+
+        $targetUser = User::findOrFail($validated['user_id']);
+        if ($authUser->isKepalaUnit() && $targetUser->unit !== $authUser->unit) {
+            abort(403, 'Anda hanya dapat mengoreksi absensi pegawai di unit Anda.');
+        }
+
+        $tanggal = Carbon::parse($validated['tanggal'])->toDateString();
+        $checkIn = !empty($validated['check_in'])
+            ? Carbon::parse($tanggal . ' ' . $validated['check_in'])
+            : null;
+        $checkOut = !empty($validated['check_out'])
+            ? Carbon::parse($tanggal . ' ' . $validated['check_out'])
+            : null;
+
+        // Jika shift malam (jam pulang lebih kecil dari jam masuk), anggap hari berikutnya
+        if ($checkIn && $checkOut && $checkOut->lte($checkIn)) {
+            $checkOut->addDay();
+        }
+
+        $catatan = 'Koreksi Kepegawaian (' . $authUser->name . '): ' . trim($validated['alasan']);
+
+        $absensi = Absensi::firstOrNew([
+            'user_id' => $targetUser->id,
+            'tanggal' => $tanggal,
+        ]);
+
+        $absensi->check_in = $checkIn;
+        $absensi->check_out = $checkOut;
+        $absensi->status = $validated['status'];
+        $absensi->keterangan = $catatan;
+        if ($checkOut || in_array($validated['status'], ['izin', 'sakit', 'alpha'], true)) {
+            $absensi->is_lupa_absen = false;
+        }
+        $absensi->save();
+
+        return back()->with('success', 'Koreksi absensi ' . $targetUser->name . ' tanggal ' . Carbon::parse($tanggal)->format('d/m/Y') . ' berhasil disimpan.');
+    }
+
     public function export(Request $request)
     {
         $bulan    = (int) $request->get('bulan', Carbon::now()->month);

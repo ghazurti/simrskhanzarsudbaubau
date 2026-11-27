@@ -21,9 +21,14 @@
             {{ \Carbon\Carbon::create($tahun, $bulan)->locale('id')->isoFormat('MMMM YYYY') }}
         </div>
     </div>
-    <a href="{{ route('laporan.export', request()->query()) }}" class="btn btn-primary">
-        <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
-    </a>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button type="button" onclick="bukaKoreksiBaru()" class="btn btn-outline" style="border-color:var(--primary);color:var(--primary);font-weight:600">
+            <i class="bi bi-pencil-square"></i> Koreksi / Input Manual
+        </button>
+        <a href="{{ route('laporan.export', request()->query()) }}" class="btn btn-primary">
+            <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
+        </a>
+    </div>
 </div>
 
 {{-- Filter --}}
@@ -129,6 +134,8 @@ $statusConfig = [
                     <th>Foto</th>
                     <th>Durasi</th>
                     <th>Status</th>
+                    <th>Keterangan</th>
+                    <th style="text-align:center">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -139,6 +146,9 @@ $statusConfig = [
                         $m = \Carbon\Carbon::parse($a->check_in)->diffInMinutes(\Carbon\Carbon::parse($a->check_out));
                         $dur = floor($m/60).'j '.($m%60).'m';
                     }
+                    $tglIso = \Carbon\Carbon::parse($a->tanggal)->format('Y-m-d');
+                    $jamIn = $a->check_in ? \Carbon\Carbon::parse($a->check_in)->format('H:i') : '';
+                    $jamOut = $a->check_out ? \Carbon\Carbon::parse($a->check_out)->format('H:i') : '';
                 @endphp
                 <tr>
                     <td style="font-weight:600;white-space:nowrap">
@@ -192,10 +202,20 @@ $statusConfig = [
                     </td>
                     <td style="color:var(--gray-400);font-size:12px">{{ $dur ?? '-' }}</td>
                     <td><span class="badge badge-{{ $a->status }}">{{ ucfirst($a->status) }}</span></td>
+                    <td style="font-size:12px;color:var(--gray-500);max-width:200px">{{ $a->keterangan ?: '-' }}</td>
+                    <td style="text-align:center;white-space:nowrap">
+                        <button type="button"
+                            onclick="bukaKoreksiRow({{ $a->user_id }}, '{{ $tglIso }}', '{{ $jamIn }}', '{{ $jamOut }}', '{{ $a->status }}', '{{ addslashes($a->user->name ?? '-') }}')"
+                            class="btn btn-outline btn-sm"
+                            style="font-size:12px;padding:5px 10px;border-color:#cbd5e1"
+                            title="Koreksi absen baris ini">
+                            <i class="bi bi-pencil-square"></i> Koreksi
+                        </button>
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="9" style="text-align:center;padding:48px;color:var(--gray-400)">
+                    <td colspan="11" style="text-align:center;padding:48px;color:var(--gray-400)">
                         <i class="bi bi-inbox" style="font-size:36px;display:block;margin-bottom:10px;opacity:.3"></i>
                         Tidak ada data untuk periode yang dipilih
                     </td>
@@ -205,6 +225,70 @@ $statusConfig = [
         </table>
     </div>
     <div style="padding:16px;border-top:1px solid var(--gray-100)">{{ $absensis->links() }}</div>
+</div>
+
+{{-- Modal Koreksi Absensi Kepegawaian --}}
+<div id="koreksiModal" onclick="if(event.target===this)tutupKoreksi()" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:9999;align-items:center;justify-content:center;padding:20px">
+    <div style="background:#fff;border-radius:14px;max-width:500px;width:100%;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--gray-200)">
+            <div>
+                <div id="koreksiModalTitle" style="font-weight:700;font-size:15px;color:var(--gray-900)">Koreksi Absensi Kepegawaian</div>
+                <div style="font-size:12px;color:var(--gray-400)">Gunakan jika aplikasi error, gangguan GPS, atau perlu koreksi manual</div>
+            </div>
+            <button type="button" onclick="tutupKoreksi()" style="border:none;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--gray-500)">&times;</button>
+        </div>
+        <form action="{{ route('laporan.koreksi') }}" method="POST" style="padding:18px">
+            @csrf
+            <div class="form-group" style="margin-bottom:12px">
+                <label class="form-label" style="font-size:12px">Pegawai</label>
+                <select name="user_id" id="korUserId" class="form-control form-select" required>
+                    <option value="">-- Pilih Pegawai --</option>
+                    @foreach($pegawais as $p)
+                    <option value="{{ $p->id }}">{{ $p->name }} {{ $p->unit ? '('.$p->unit.')' : '' }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" style="font-size:12px">Tanggal</label>
+                    <input type="date" name="tanggal" id="korTanggal" class="form-control" required value="{{ date('Y-m-d') }}">
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" style="font-size:12px">Status Kehadiran</label>
+                    <select name="status" id="korStatus" class="form-control form-select" required>
+                        <option value="hadir">Hadir</option>
+                        <option value="terlambat">Terlambat</option>
+                        <option value="izin">Izin</option>
+                        <option value="sakit">Sakit</option>
+                        <option value="alpha">Alpha</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" style="font-size:12px">Jam Check In</label>
+                    <input type="time" name="check_in" id="korCheckIn" class="form-control">
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" style="font-size:12px">Jam Check Out</label>
+                    <input type="time" name="check_out" id="korCheckOut" class="form-control">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:16px">
+                <label class="form-label" style="font-size:12px">Alasan Koreksi (wajib)</label>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+                    <button type="button" onclick="isiAlasan('Aplikasi absensi error / gagal kirim')" class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 8px">Aplikasi error</button>
+                    <button type="button" onclick="isiAlasan('Gangguan sinyal / GPS tidak terbaca')" class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 8px">Gangguan GPS/sinyal</button>
+                    <button type="button" onclick="isiAlasan('Lupa absen pulang (konfirmasi atasan)')" class="btn btn-outline btn-sm" style="font-size:11px;padding:2px 8px">Lupa absen pulang</button>
+                </div>
+                <input type="text" name="alasan" id="korAlasan" class="form-control" required maxlength="255" placeholder="Contoh: Aplikasi error saat check-in pagi">
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+                <button type="button" onclick="tutupKoreksi()" class="btn btn-outline">Batal</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan Koreksi</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 {{-- Modal Pratinjau Foto Absensi --}}
@@ -232,6 +316,32 @@ function tutupFoto() {
     document.getElementById('fotoModal').style.display = 'none';
     document.getElementById('fotoModalImg').src = '';
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') tutupFoto(); });
+function bukaKoreksiBaru() {
+    document.getElementById('koreksiModalTitle').textContent = 'Input / Koreksi Absensi Manual';
+    document.getElementById('korUserId').value = '{{ $userId ?? '' }}';
+    document.getElementById('korTanggal').value = '{{ date('Y-m-d') }}';
+    document.getElementById('korCheckIn').value = '07:30';
+    document.getElementById('korCheckOut').value = '16:00';
+    document.getElementById('korStatus').value = 'hadir';
+    document.getElementById('korAlasan').value = '';
+    document.getElementById('koreksiModal').style.display = 'flex';
+}
+function bukaKoreksiRow(userId, tanggal, checkIn, checkOut, status, nama) {
+    document.getElementById('koreksiModalTitle').textContent = 'Koreksi Absensi — ' + nama;
+    document.getElementById('korUserId').value = userId;
+    document.getElementById('korTanggal').value = tanggal;
+    document.getElementById('korCheckIn').value = checkIn;
+    document.getElementById('korCheckOut').value = checkOut;
+    document.getElementById('korStatus').value = status;
+    document.getElementById('korAlasan').value = '';
+    document.getElementById('koreksiModal').style.display = 'flex';
+}
+function tutupKoreksi() {
+    document.getElementById('koreksiModal').style.display = 'none';
+}
+function isiAlasan(teks) {
+    document.getElementById('korAlasan').value = teks;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { tutupFoto(); tutupKoreksi(); } });
 </script>
 @endpush
