@@ -71,7 +71,6 @@ class KoreksiAbsensiController extends Controller
         }
         if ($koreksi->jam_keluar) {
             $absensi->check_out = Carbon::parse($tanggalStr . ' ' . $koreksi->jam_keluar);
-            $absensi->is_lupa_absen = false;
         }
         $absensi->status = 'hadir';
         $absensi->save();

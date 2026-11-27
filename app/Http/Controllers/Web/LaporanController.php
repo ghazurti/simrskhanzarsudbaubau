@@ -117,9 +117,6 @@ class LaporanController extends Controller
         $absensi->check_out = $checkOut;
         $absensi->status = $validated['status'];
         $absensi->keterangan = $catatan;
-        if ($checkOut || in_array($validated['status'], ['izin', 'sakit', 'alpha'], true)) {
-            $absensi->is_lupa_absen = false;
-        }
         $absensi->save();
 
         return back()->with('success', 'Koreksi absensi ' . $targetUser->name . ' tanggal ' . Carbon::parse($tanggal)->format('d/m/Y') . ' berhasil disimpan.');
