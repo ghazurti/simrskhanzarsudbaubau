@@ -67,6 +67,7 @@ Route::middleware(['auth'])->group(function () {
         // Laporan & Rekapitulasi
         Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::post('/laporan/koreksi', [LaporanController::class, 'koreksiManual'])->name('laporan.koreksi');
+        Route::post('/laporan/koreksi-massal', [LaporanController::class, 'koreksiMassal'])->name('laporan.koreksi_massal');
         Route::get('/laporan/export', [LaporanController::class, 'export'])->name('laporan.export');
         Route::get('/laporan/rekap', [LaporanController::class, 'rekap'])->name('laporan.rekap');
         Route::get('/laporan/rekap/export', [LaporanController::class, 'exportRekap'])->name('laporan.export_rekap');

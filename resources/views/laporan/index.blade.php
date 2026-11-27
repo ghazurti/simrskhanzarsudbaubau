@@ -14,11 +14,15 @@
 @endpush
 
 @section('content')
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
     <div>
         <div style="font-size:22px;font-weight:800;color:var(--gray-900)">Laporan Absensi</div>
         <div style="font-size:13px;color:var(--gray-400);margin-top:3px">
-            {{ \Carbon\Carbon::create($tahun, $bulan)->locale('id')->isoFormat('MMMM YYYY') }}
+            @if(($mode ?? 'riwayat') === 'harian')
+                Semua Pegawai &mdash; {{ \Carbon\Carbon::parse($tanggal)->locale('id')->isoFormat('dddd, D MMMM YYYY') }}
+            @else
+                {{ \Carbon\Carbon::create($tahun, $bulan)->locale('id')->isoFormat('MMMM YYYY') }}
+            @endif
         </div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -31,6 +35,201 @@
     </div>
 </div>
 
+{{-- Mode Tabs --}}
+<div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
+    <a href="{{ route('laporan.index', ['mode' => 'riwayat', 'bulan' => $bulan, 'tahun' => $tahun, 'unit' => $unit]) }}"
+       class="btn {{ ($mode ?? 'riwayat') === 'riwayat' ? 'btn-primary' : 'btn-outline' }}"
+       style="padding:9px 16px;font-weight:600">
+        <i class="bi bi-table"></i> Riwayat Absensi (Bulanan)
+    </a>
+    <a href="{{ route('laporan.index', ['mode' => 'harian', 'tanggal' => $tanggal ?? date('Y-m-d'), 'unit' => $unit]) }}"
+       class="btn {{ ($mode ?? 'riwayat') === 'harian' ? 'btn-primary' : 'btn-outline' }}"
+       style="padding:9px 16px;font-weight:600">
+        <i class="bi bi-people-fill"></i> Semua Pegawai Per Tanggal (Belum Absen &amp; Koreksi Massal)
+    </a>
+</div>
+
+@if(($mode ?? 'riwayat') === 'harian')
+{{-- Filter Harian --}}
+<div class="card" style="margin-bottom:20px">
+    <div class="card-body" style="padding:16px 20px">
+        <form style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <input type="hidden" name="mode" value="harian">
+            <div>
+                <label class="form-label" style="font-size:12px">Tanggal</label>
+                <input type="date" name="tanggal" value="{{ $tanggal }}" class="form-control" style="width:165px">
+            </div>
+            @if($units->count() > 1)
+            <div style="min-width:170px">
+                <label class="form-label" style="font-size:12px">Unit</label>
+                <select name="unit" class="form-control form-select">
+                    <option value="">Semua Unit</option>
+                    @foreach($units as $u)
+                    <option value="{{ $u }}" {{ $unit==$u?'selected':'' }}>{{ $u }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+            <div style="min-width:165px">
+                <label class="form-label" style="font-size:12px">Status Absen</label>
+                <select name="status_harian" class="form-control form-select">
+                    <option value="" {{ ($statusHarian ?? '')===''?'selected':'' }}>Semua Pegawai</option>
+                    <option value="belum" {{ ($statusHarian ?? '')==='belum'?'selected':'' }}>Belum Absen Saja</option>
+                    <option value="sudah" {{ ($statusHarian ?? '')==='sudah'?'selected':'' }}>Sudah Absen Saja</option>
+                </select>
+            </div>
+            <div style="flex:1;min-width:180px">
+                <label class="form-label" style="font-size:12px">Cari Nama / NIP</label>
+                <input type="text" name="q" value="{{ $search ?? '' }}" class="form-control" placeholder="Ketik nama atau NIP...">
+            </div>
+            <button type="submit" class="btn btn-primary" style="padding:10px 20px">
+                <i class="bi bi-search"></i> Tampilkan
+            </button>
+        </form>
+    </div>
+</div>
+
+{{-- Stats Harian --}}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+    <div class="rs-box">
+        <div class="rs-icon" style="background:#eff6ff;color:#2563eb"><i class="bi bi-people-fill"></i></div>
+        <div>
+            <div class="rs-val" style="color:#2563eb">{{ $harianStats['total'] ?? 0 }}</div>
+            <div class="rs-label">Total Pegawai</div>
+        </div>
+    </div>
+    <div class="rs-box">
+        <div class="rs-icon" style="background:#f0fdf4;color:#16a34a"><i class="bi bi-person-check-fill"></i></div>
+        <div>
+            <div class="rs-val" style="color:#16a34a">{{ $harianStats['sudah'] ?? 0 }}</div>
+            <div class="rs-label">Sudah Absen</div>
+        </div>
+    </div>
+    <div class="rs-box">
+        <div class="rs-icon" style="background:#fef2f2;color:#dc2626"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div>
+            <div class="rs-val" style="color:#dc2626">{{ $harianStats['belum'] ?? 0 }}</div>
+            <div class="rs-label">Belum Absen (Bisa Dikoreksi)</div>
+        </div>
+    </div>
+</div>
+
+{{-- Form Koreksi Massal + Tabel Semua Pegawai --}}
+<form action="{{ route('laporan.koreksi_massal') }}" method="POST" id="formKoreksiMassal" onsubmit="return cekPilihanMassal()">
+    @csrf
+    <input type="hidden" name="tanggal" value="{{ $tanggal }}">
+    <div class="card" style="margin-bottom:16px;border:1.5px solid #bbf7d0;background:#f0fdf4">
+        <div class="card-body" style="padding:14px 18px">
+            <div style="font-weight:700;font-size:13px;color:#166534;margin-bottom:10px">
+                <i class="bi bi-lightning-charge-fill"></i> Koreksi Massal Sekaligus (Jika Aplikasi Error untuk Banyak Pegawai)
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+                <div>
+                    <label class="form-label" style="font-size:11px">Jam Masuk</label>
+                    <input type="time" name="check_in" value="07:30" class="form-control" style="width:120px">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size:11px">Jam Pulang</label>
+                    <input type="time" name="check_out" value="16:00" class="form-control" style="width:120px">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size:11px">Status</label>
+                    <select name="status" class="form-control form-select" style="width:130px" required>
+                        <option value="hadir">Hadir</option>
+                        <option value="terlambat">Terlambat</option>
+                        <option value="izin">Izin</option>
+                        <option value="sakit">Sakit</option>
+                        <option value="alpha">Alpha</option>
+                    </select>
+                </div>
+                <div style="flex:1;min-width:200px">
+                    <label class="form-label" style="font-size:11px">Alasan Koreksi Massal</label>
+                    <input type="text" name="alasan" value="Aplikasi absensi error / gangguan server" class="form-control" required maxlength="255">
+                </div>
+                <button type="button" onclick="pilihSemuaBelum()" class="btn btn-outline" style="background:#fff;border-color:#16a34a;color:#166534;font-weight:600">
+                    Pilih Semua Belum Absen
+                </button>
+                <button type="submit" class="btn btn-primary" style="font-weight:700">
+                    <i class="bi bi-check2-all"></i> Simpan Koreksi Massal (<span id="jumlahDipilih">0</span>)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span><i class="bi bi-people me-2" style="color:var(--primary)"></i>Daftar Semua Pegawai ({{ \Carbon\Carbon::parse($tanggal)->format('d/m/Y') }})</span>
+            <span style="font-size:12px;color:var(--gray-400)">{{ $harianList->count() }} pegawai ditampilkan</span>
+        </div>
+        <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:36px;text-align:center">
+                            <input type="checkbox" id="checkAllHarian" onchange="toggleAllHarian(this.checked)">
+                        </th>
+                        <th>Pegawai</th>
+                        <th>NIP</th>
+                        <th>Unit</th>
+                        <th>Check In</th>
+                        <th>Check Out</th>
+                        <th>Status</th>
+                        <th>Keterangan</th>
+                        <th style="text-align:center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($harianList as $row)
+                    @php
+                        $u = $row->user;
+                        $a = $row->absensi;
+                        $jamIn = ($a && $a->check_in) ? \Carbon\Carbon::parse($a->check_in)->format('H:i') : '';
+                        $jamOut = ($a && $a->check_out) ? \Carbon\Carbon::parse($a->check_out)->format('H:i') : '';
+                    @endphp
+                    <tr style="{{ !$a ? 'background:#fffbfb' : '' }}">
+                        <td style="text-align:center">
+                            <input type="checkbox" name="user_ids[]" value="{{ $u->id }}"
+                                class="cb-harian {{ !$a ? 'cb-belum' : 'cb-sudah' }}"
+                                onchange="updateJumlahDipilih()">
+                        </td>
+                        <td style="font-weight:600;font-size:13px">{{ $u->name }}</td>
+                        <td style="font-family:monospace;font-size:12px;color:var(--gray-400)">{{ $u->nip ?? '-' }}</td>
+                        <td>
+                            @if($u->unit)
+                            <span style="background:var(--primary-light);color:var(--primary);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">{{ $u->unit }}</span>
+                            @else <span style="color:var(--gray-300)">—</span> @endif
+                        </td>
+                        <td style="color:#16a34a;font-weight:600">{{ $jamIn ?: '-' }}</td>
+                        <td style="color:var(--primary);font-weight:600">{{ $jamOut ?: '-' }}</td>
+                        <td>
+                            @if($a)
+                                <span class="badge badge-{{ $a->status }}">{{ ucfirst($a->status) }}</span>
+                            @else
+                                <span style="background:#fee2e2;color:#b91c1c;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">Belum Absen</span>
+                            @endif
+                        </td>
+                        <td style="font-size:12px;color:var(--gray-500);max-width:220px">{{ $a->keterangan ?? '-' }}</td>
+                        <td style="text-align:center;white-space:nowrap">
+                            <button type="button"
+                                onclick="bukaKoreksiRow({{ $u->id }}, '{{ $tanggal }}', '{{ $jamIn ?: '07:30' }}', '{{ $jamOut ?: '16:00' }}', '{{ $a->status ?? 'hadir' }}', '{{ addslashes($u->name) }}')"
+                                class="btn btn-outline btn-sm"
+                                style="font-size:12px;padding:5px 10px;border-color:{{ !$a ? '#dc2626' : '#cbd5e1' }};color:{{ !$a ? '#dc2626' : 'inherit' }}">
+                                <i class="bi bi-pencil-square"></i> {{ !$a ? 'Input Absen' : 'Koreksi' }}
+                            </button>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="9" style="text-align:center;padding:48px;color:var(--gray-400)">Tidak ada pegawai ditemukan</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+@else
 {{-- Filter --}}
 <div class="card" style="margin-bottom:20px">
     <div class="card-body" style="padding:16px 20px">
@@ -226,6 +425,7 @@ $statusConfig = [
     </div>
     <div style="padding:16px;border-top:1px solid var(--gray-100)">{{ $absensis->links() }}</div>
 </div>
+@endif
 
 {{-- Modal Koreksi Absensi Kepegawaian --}}
 <div id="koreksiModal" onclick="if(event.target===this)tutupKoreksi()" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:9999;align-items:center;justify-content:center;padding:20px">
@@ -341,6 +541,27 @@ function tutupKoreksi() {
 }
 function isiAlasan(teks) {
     document.getElementById('korAlasan').value = teks;
+}
+function updateJumlahDipilih() {
+    const n = document.querySelectorAll('.cb-harian:checked').length;
+    const el = document.getElementById('jumlahDipilih');
+    if (el) el.textContent = n;
+}
+function toggleAllHarian(checked) {
+    document.querySelectorAll('.cb-harian').forEach(cb => cb.checked = checked);
+    updateJumlahDipilih();
+}
+function pilihSemuaBelum() {
+    document.querySelectorAll('.cb-harian').forEach(cb => cb.checked = cb.classList.contains('cb-belum'));
+    updateJumlahDipilih();
+}
+function cekPilihanMassal() {
+    const n = document.querySelectorAll('.cb-harian:checked').length;
+    if (n === 0) {
+        alert('Pilih minimal 1 pegawai terlebih dahulu.');
+        return false;
+    }
+    return confirm('Simpan koreksi massal untuk ' + n + ' pegawai terpilih?');
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { tutupFoto(); tutupKoreksi(); } });
 </script>
