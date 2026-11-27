@@ -27,7 +27,29 @@ class AbsensiController extends Controller
 
         $absensis       = $query->orderBy('tanggal', 'desc')->paginate(20);
         $shiftHariIni   = Shift::where('user_id', $user->id)->whereDate('tanggal', Carbon::today())->first();
-        $absensiHariIni = Absensi::where('user_id', $user->id)->whereDate('tanggal', Carbon::today())->first();
+        $absensiHariIni = Absensi::with('shift')->where('user_id', $user->id)->whereDate('tanggal', Carbon::today())->first();
+        if ((!$absensiHariIni || !$absensiHariIni->check_in) && Carbon::now()->hour < 12) {
+            $absensiKemarin = Absensi::with('shift')
+                ->where('user_id', $user->id)
+                ->whereDate('tanggal', Carbon::yesterday())
+                ->whereNotNull('check_in')
+                ->whereNull('check_out')
+                ->first();
+            if ($absensiKemarin && $absensiKemarin->shift) {
+                $s = $absensiKemarin->shift;
+                $isOvernight = $s->jenis_shift === 'malam'
+                    || $s->jam_keluar <= $s->jam_masuk
+                    || ($user->isItUnit() && (
+                        $s->jenis_shift === 'oncall'
+                        || str_contains(strtolower((string) $s->keterangan), 'on-call')
+                        || str_contains(strtolower((string) $s->keterangan), 'on call')
+                    ));
+                if ($isOvernight) {
+                    $absensiHariIni = $absensiKemarin;
+                    $shiftHariIni = $s;
+                }
+            }
+        }
         $liburHariIni   = Libur::whereDate('tanggal', Carbon::today())->first();
 
         return view('absensi.index', compact('absensis', 'bulan', 'tahun', 'shiftHariIni', 'absensiHariIni', 'liburHariIni'));
@@ -147,7 +169,7 @@ class AbsensiController extends Controller
         $user = auth()->user();
         $today = Carbon::today()->toDateString();
 
-        $absensi = Absensi::where('user_id', $user->id)->where('tanggal', $today)->first();
+        $absensi = Absensi::with('shift')->where('user_id', $user->id)->where('tanggal', $today)->first();
 
         if ((!$absensi || !$absensi->check_in) && Carbon::now()->hour < 12) {
             $yesterday = Carbon::yesterday()->toDateString();
@@ -161,14 +183,14 @@ class AbsensiController extends Controller
                 $s = $absensiKemarin->shift;
                 $isOvernight = $s->jenis_shift === 'malam'
                     || $s->jam_keluar <= $s->jam_masuk
-                    || str_contains(strtolower((string) $s->keterangan), 'on-call')
-                    || str_contains(strtolower((string) $s->keterangan), 'on call');
+                    || ($user->isItUnit() && (
+                        $s->jenis_shift === 'oncall'
+                        || str_contains(strtolower((string) $s->keterangan), 'on-call')
+                        || str_contains(strtolower((string) $s->keterangan), 'on call')
+                    ));
                 if ($isOvernight) {
                     $absensi = $absensiKemarin;
                 }
-            }
-            if (false) {
-                $absensi = $absensiKemarin;
             }
         }
 
@@ -179,9 +201,18 @@ class AbsensiController extends Controller
             return back()->with('error', 'Anda sudah melakukan check-out hari ini.');
         }
 
-        $jarak = $this->hitungJarak($request->latitude, $request->longitude, config("attendance.latitude"), config("attendance.longitude"));
-        if ($jarak > config("attendance.radius")) {
-            return back()->with('error', 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter.');
+        $sh = $absensi->shift;
+        $isOnCall = $user->isItUnit() && $sh && (
+            $sh->jenis_shift === 'oncall'
+            || str_contains(strtolower((string) $sh->keterangan), 'on call')
+            || str_contains(strtolower((string) $sh->keterangan), 'on-call')
+        );
+
+        if (!$isOnCall) {
+            $jarak = $this->hitungJarak($request->latitude, $request->longitude, config("attendance.latitude"), config("attendance.longitude"));
+            if ($jarak > config("attendance.radius")) {
+                return back()->with('error', 'Anda berada di luar area absen. Jarak: ' . round($jarak) . ' meter.');
+            }
         }
 
         $fotoPath = $request->hasFile('foto')
