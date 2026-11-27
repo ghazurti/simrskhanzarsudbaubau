@@ -98,7 +98,11 @@ class ShiftController extends Controller
             return back()->with('info', 'Tidak ada jadwal shift yang disimpan pada rentang tanggal tersebut.');
         }
 
-        return back()->with('success', "$count jadwal shift berhasil disimpan.");
+        $firstDate = Carbon::parse($request->tanggal_mulai);
+        return redirect()->route('shift.index', [
+            'bulan' => $firstDate->month,
+            'tahun' => $firstDate->year,
+        ])->with('success', "$count jadwal shift berhasil disimpan.");
     }
 
     public function destroy(Shift $shift)

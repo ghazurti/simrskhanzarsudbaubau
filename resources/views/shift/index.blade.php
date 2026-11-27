@@ -42,16 +42,21 @@
                 </div>
                 @endif
 
+                @php
+                    $defaultTanggal = ((int)$bulan === (int)date('n') && (int)$tahun === (int)date('Y'))
+                        ? date('Y-m-d')
+                        : sprintf('%04d-%02d-01', $tahun, $bulan);
+                @endphp
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
                     <div class="form-group" style="margin-bottom:0">
                         <label class="form-label">Tanggal Mulai</label>
-                        <input type="date" name="tanggal_mulai" class="form-control" min="{{ date('Y-m-d') }}"
-                            value="{{ old('tanggal_mulai', date('Y-m-d')) }}" required onchange="syncEndDate()">
+                        <input type="date" name="tanggal_mulai" class="form-control"
+                            value="{{ old('tanggal_mulai', $defaultTanggal) }}" required onchange="syncEndDate()">
                     </div>
                     <div class="form-group" style="margin-bottom:0">
                         <label class="form-label">Tanggal Selesai</label>
                         <input type="date" name="tanggal_selesai" id="tanggalSelesai" class="form-control"
-                            value="{{ old('tanggal_selesai', date('Y-m-d')) }}" required>
+                            value="{{ old('tanggal_selesai', $defaultTanggal) }}" required>
                     </div>
                 </div>
 
@@ -235,9 +240,11 @@ function selectAllUsers() {
 function syncEndDate() {
     const start = document.getElementsByName('tanggal_mulai')[0].value;
     const endInput = document.getElementById('tanggalSelesai');
-    if (start && (!endInput.value || endInput.value < start)) {
-        endInput.value = start;
+    if (start) {
         endInput.min = start;
+        if (!endInput.value || endInput.value < start) {
+            endInput.value = start;
+        }
     }
 }
 
