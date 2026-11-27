@@ -11,8 +11,6 @@ use Illuminate\Http\Request;
 
 class AbsensiController extends Controller
 {
-    // Koordinat Rumah/Kantor akan diambil dari config/attendance.php
-
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -42,6 +40,7 @@ class AbsensiController extends Controller
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
+            'shift_id' => 'nullable|exists:shifts,id',
             'foto' => ($cameraEnabled ? 'required' : 'nullable') . '|image|max:3072',
         ]);
 
@@ -62,40 +61,61 @@ class AbsensiController extends Controller
             ? $request->file('foto')->store('foto-absensi', 'public')
             : null;
 
-        if ($user->jenis_absensi === 'normal') {
+        // Cek apakah pegawai punya jadwal shift hari ini (termasuk staf IT/SIMRS yang punya Shift Siang 14:00-21:00 atau On-Call Sabtu/Minggu)
+        $shift = null;
+        if ($request->filled('shift_id')) {
+            $shift = Shift::where('id', $request->shift_id)->where('user_id', $user->id)->first();
+        }
+        if (!$shift && ($user->jenis_absensi === 'shift' || $user->isItUnit())) {
+            $shift = Shift::where('user_id', $user->id)->whereDate('tanggal', $today)->first();
+        }
+
+        if ($user->jenis_absensi === 'shift' && !$user->isItUnit() && !$shift) {
+            return back()->with('error', 'Anda belum memiliki jadwal shift hari ini. Silakan tambahkan jadwal shift terlebih dahulu.');
+        }
+
+        if (!$shift) {
             $hariIni = Carbon::today()->dayOfWeek;
             if (in_array($hariIni, config('attendance.hari_libur'))) {
-                return back()->with('error', 'Hari ini adalah hari libur. Absensi tidak tersedia.');
+                $msg = $user->isItUnit()
+                    ? 'Hari ini akhir pekan (Sabtu/Minggu). Jika Anda bertugas On-Call / Shift IT, silakan input jadwal Shift terlebih dahulu di menu Jadwal Shift.'
+                    : 'Hari ini adalah hari libur. Absensi tidak tersedia.';
+                return back()->with('error', $msg);
             }
             $liburNasional = Libur::whereDate('tanggal', Carbon::today())->first();
             if ($liburNasional) {
-                return back()->with('error', 'Hari ini adalah hari libur nasional: ' . $liburNasional->nama_libur . '. Absensi tidak tersedia.');
+                $msg = $user->isItUnit()
+                    ? 'Hari ini libur nasional (' . $liburNasional->nama_libur . '). Jika Anda bertugas On-Call IT, silakan input jadwal Shift terlebih dahulu.'
+                    : 'Hari ini adalah hari libur nasional: ' . $liburNasional->nama_libur . '. Absensi tidak tersedia.';
+                return back()->with('error', $msg);
             }
         }
 
         $status = 'hadir';
-        if ($user->jenis_absensi === 'normal') {
+        $toleransi = (int) config('attendance.toleransi_menit', 15);
+
+        if ($shift) {
+            $isOnCall = str_contains(strtolower((string) $shift->keterangan), 'on call')
+                     || str_contains(strtolower((string) $shift->keterangan), 'on-call');
+            if (!$isOnCall) {
+                $jamMasuk = Carbon::parse($today . ' ' . $shift->jam_masuk);
+                if (Carbon::now()->gt($jamMasuk->addMinutes($toleransi))) {
+                    $status = 'terlambat';
+                }
+            }
+        } else {
             $hariIni   = Carbon::today()->dayOfWeek;
             $jamKantor = config('attendance.jam_kantor')[$hariIni] ?? ['masuk' => '07:30'];
-            $toleransi = config('attendance.toleransi_menit', 15);
             $jamMasuk  = Carbon::parse($today . ' ' . $jamKantor['masuk']);
             if (Carbon::now()->gt($jamMasuk->addMinutes($toleransi))) {
                 $status = 'terlambat';
-            }
-        } elseif ($request->filled('shift_id')) {
-            $shift = Shift::find($request->shift_id);
-            if ($shift) {
-                $jamMasuk = Carbon::parse($today . ' ' . $shift->jam_masuk);
-                if (Carbon::now()->gt($jamMasuk->addMinutes(15))) {
-                    $status = 'terlambat';
-                }
             }
         }
 
         Absensi::updateOrCreate(
             ['user_id' => $user->id, 'tanggal' => $today],
             [
-                'shift_id' => $request->shift_id,
+                'shift_id' => $shift?->id,
                 'check_in' => Carbon::now(),
                 'foto_check_in' => $fotoPath,
                 'latitude_in' => $request->latitude,
@@ -121,6 +141,19 @@ class AbsensiController extends Controller
         $today = Carbon::today()->toDateString();
 
         $absensi = Absensi::where('user_id', $user->id)->where('tanggal', $today)->first();
+
+        if ((!$absensi || !$absensi->check_in) && Carbon::now()->hour < 12) {
+            $yesterday = Carbon::yesterday()->toDateString();
+            $absensiKemarin = Absensi::with('shift')
+                ->where('user_id', $user->id)
+                ->where('tanggal', $yesterday)
+                ->whereNotNull('check_in')
+                ->whereNull('check_out')
+                ->first();
+            if ($absensiKemarin && $absensiKemarin->shift && $absensiKemarin->shift->jenis_shift === 'malam') {
+                $absensi = $absensiKemarin;
+            }
+        }
 
         if (!$absensi || !$absensi->check_in) {
             return back()->with('error', 'Anda belum melakukan check-in hari ini.');

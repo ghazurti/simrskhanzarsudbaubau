@@ -14,13 +14,13 @@
             <span><i class="bi bi-plus-circle me-2" style="color:var(--primary)"></i>Penetapan Shift</span>
         </div>
         <div class="card-body">
-        @if(!auth()->user()->isAdmin() && auth()->user()->jenis_absensi !== 'shift')
+        @if(!auth()->user()->canManageShift())
             <div style="text-align:center;padding:32px 16px">
                 <i class="bi bi-clock-history" style="font-size:40px;color:#94a3b8;display:block;margin-bottom:12px"></i>
                 <div style="font-weight:700;font-size:15px;color:#374151;margin-bottom:6px">Absensi Normal</div>
                 <div style="font-size:13px;color:#64748b;line-height:1.6">
                     Anda terdaftar sebagai pegawai <strong>absensi normal</strong>.<br>
-                    Jadwal shift hanya tersedia untuk pegawai shift.<br>
+                    Jadwal shift mandiri hanya tersedia untuk pegawai Shift dan unit IT / SIMRS.<br>
                     Hubungi admin untuk mengubah jenis absensi.
                 </div>
             </div>
@@ -74,10 +74,16 @@
                 <div class="form-group">
                     <label class="form-label">Jenis Shift</label>
                     <select name="jenis_shift" class="form-control form-select" id="jenisShift" onchange="setJam()" required>
-                        <option value="pagi">🌅 Pagi (07:00 - 16:00 / Jumat 17:00)</option>
-                        <option value="siang">☀️ Siang (14:00 - 21:00)</option>
+                        <option value="pagi">🌅 Pagi (07:00 - 14:00 / 16:00)</option>
+                        <option value="siang" {{ auth()->user()->isItUnit() ? 'selected' : '' }}>☀️ Siang IT / Pelayanan (14:00 - 21:00)</option>
                         <option value="malam">🌙 Malam (21:00 - 07:00)</option>
                     </select>
+                    @if(auth()->user()->isItUnit() || auth()->user()->isAdmin())
+                    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+                        <button type="button" onclick="setPresetIt('siang')" class="btn btn-outline" style="font-size:11px;padding:3px 8px;border-radius:6px">⚡ Preset Shift Siang IT (14:00-21:00)</button>
+                        <button type="button" onclick="setPresetIt('oncall')" class="btn btn-outline" style="font-size:11px;padding:3px 8px;border-radius:6px">🛠️ Preset On-Call Sabtu/Minggu</button>
+                    </div>
+                    @endif
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                     <div class="form-group">
@@ -181,7 +187,23 @@
 
 @push('scripts')
 <script>
-const shiftMap = { pagi:['07:00','16:00'], siang:['14:00','21:00'], malam:['21:00','07:00'] };
+const shiftMap = { pagi:['07:00','14:00'], siang:['14:00','21:00'], malam:['21:00','07:00'] };
+
+function setPresetIt(mode) {
+    const sel = document.getElementById('jenisShift');
+    const ket = document.getElementsByName('keterangan')[0];
+    if (mode === 'siang') {
+        sel.value = 'siang';
+        document.getElementById('jamMasuk').value = '14:00';
+        document.getElementById('jamKeluar').value = '21:00';
+        if (ket && (!ket.value || ket.value.includes('On-Call'))) ket.value = 'Shift Siang IT (14:00 - 21:00)';
+    } else if (mode === 'oncall') {
+        sel.value = 'pagi';
+        document.getElementById('jamMasuk').value = '08:00';
+        document.getElementById('jamKeluar').value = '20:00';
+        if (ket) ket.value = 'On-Call IT Sabtu/Minggu';
+    }
+}
 
 function setJam() {
     const v = document.getElementById('jenisShift').value;
@@ -195,7 +217,7 @@ function setJam() {
     if (v === 'pagi' && dateInput) {
         const day = new Date(dateInput).getDay();
         if (day === 5) { // 5 = Jumat
-            jamKeluar = '17:00';
+            jamKeluar = '16:30';
         }
     }
     
@@ -221,7 +243,7 @@ function syncEndDate() {
 
 // Init min date for end date
 document.addEventListener('DOMContentLoaded', () => {
-    syncEndDate();
+    syncEndDate(); setJam();
 });
 </script>
 @endpush

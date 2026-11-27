@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Shift;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -22,7 +23,15 @@ class ShiftController extends Controller
 
         $shifts = $query->orderBy('tanggal')->get();
         $users = $user->isAdmin()
-            ? \App\Models\User::where('role', 'pegawai')->where('jenis_absensi', 'shift')->orderBy('name')->get()
+            ? User::whereIn('role', ['pegawai', 'kepala_unit'])
+                ->where(function ($q) {
+                    $q->where('jenis_absensi', 'shift')
+                      ->orWhereIn('unit', ['IT', 'SIMRS', 'Instalasi SIMRS', 'Instalasi IT', 'SIRS', 'TI'])
+                      ->orWhere('unit', 'like', '%SIMRS%')
+                      ->orWhere('unit', 'like', '%IT%');
+                })
+                ->orderBy('name')
+                ->get()
             : [];
 
         return view('shift.index', compact('shifts', 'bulan', 'tahun', 'users'));
@@ -31,12 +40,12 @@ class ShiftController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
-        if (!$user->isAdmin() && $user->jenis_absensi !== 'shift') {
-            return back()->with('error', 'Anda terdaftar sebagai pegawai absensi normal. Tidak dapat membuat jadwal shift.');
+        if (!$user->canManageShift()) {
+            return back()->with('error', 'Anda terdaftar sebagai pegawai absensi normal. Fitur input shift mandiri hanya untuk pegawai Shift dan unit IT/SIMRS.');
         }
 
         $isAdmin = $user->isAdmin();
-        
+
         $request->validate([
             'user_ids' => $isAdmin ? 'required|array' : 'nullable',
             'user_ids.*' => 'exists:users,id',
@@ -50,8 +59,7 @@ class ShiftController extends Controller
 
         $userIds = $isAdmin ? $request->user_ids : [auth()->id()];
         $period = \Carbon\CarbonPeriod::create($request->tanggal_mulai, $request->tanggal_selesai);
-        
-        // Cache data libur untuk efisiensi
+
         $liburDates = \App\Models\Libur::whereBetween('tanggal', [$request->tanggal_mulai, $request->tanggal_selesai])
             ->pluck('tanggal')
             ->map(fn($d) => $d->format('Y-m-d'))
@@ -61,42 +69,36 @@ class ShiftController extends Controller
         foreach ($userIds as $userId) {
             foreach ($period as $date) {
                 $tanggal = $date->format('Y-m-d');
-                
-                // Logika Pengecualian Akhir Pekan
+
                 if ($request->has('skip_sabtu') && $date->isSaturday()) continue;
                 if ($request->has('skip_minggu') && $date->isSunday()) continue;
-
-                // Logika Pengecualian Libur Nasional
                 if ($request->has('skip_libur') && in_array($tanggal, $liburDates)) continue;
+
                 $jamMasuk = $request->jam_masuk;
                 $jamKeluar = $request->jam_keluar;
 
-                // Logika Khusus Hari Jumat (Shift Pagi)
-                if ($date->isFriday() && $request->jenis_shift == 'pagi') {
+                if ($date->isFriday() && $request->jenis_shift == 'pagi' && $jamKeluar == '16:00') {
                     $jamKeluar = '17:00';
                 }
 
-                // Cek duplikasi
-                $exists = Shift::where('user_id', $userId)->where('tanggal', $tanggal)->exists();
-                if (!$exists) {
-                    Shift::create([
-                        'user_id' => $userId,
-                        'tanggal' => $tanggal,
+                Shift::updateOrCreate(
+                    ['user_id' => $userId, 'tanggal' => $tanggal],
+                    [
                         'jenis_shift' => $request->jenis_shift,
                         'jam_masuk' => $jamMasuk,
                         'jam_keluar' => $jamKeluar,
                         'keterangan' => $request->keterangan,
-                    ]);
-                    $count++;
-                }
+                    ]
+                );
+                $count++;
             }
         }
 
         if ($count === 0) {
-            return back()->with('info', 'Tidak ada shift baru yang ditambahkan (sudah ada jadwal pada tanggal tersebut).');
+            return back()->with('info', 'Tidak ada jadwal shift yang disimpan pada rentang tanggal tersebut.');
         }
 
-        return back()->with('success', "$count jadwal shift berhasil ditambahkan.");
+        return back()->with('success', "$count jadwal shift berhasil disimpan.");
     }
 
     public function destroy(Shift $shift)

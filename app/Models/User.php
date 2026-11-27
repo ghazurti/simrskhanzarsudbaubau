@@ -90,4 +90,21 @@ class User extends Authenticatable implements JWTSubject
     {
         return in_array($this->role, ['admin', 'kepala_unit']);
     }
+
+    public function isItUnit(): bool
+    {
+        $u = strtoupper(trim((string) $this->unit));
+        if ($u === '') {
+            return false;
+        }
+        if (in_array($u, ['IT', 'SIMRS', 'INSTALASI SIMRS', 'INSTALASI IT', 'TI', 'SIRS', 'PDE'], true)) {
+            return true;
+        }
+        return (bool) preg_match('/\b(IT|SIMRS|SIRS|TEKNOLOGI INFORMASI)\b/i', $u);
+    }
+
+    public function canManageShift(): bool
+    {
+        return $this->jenis_absensi === 'shift' || $this->isItUnit() || $this->isAdmin();
+    }
 }

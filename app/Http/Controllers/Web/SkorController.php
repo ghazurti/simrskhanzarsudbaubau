@@ -160,11 +160,23 @@ class SkorController extends Controller
                 $kt['KT5']++;
             }
 
+            $tglStr = $a->tanggal->format('Y-m-d');
+            $hariKe = $a->tanggal->dayOfWeek;
+            $jamKantorHari = config('attendance.jam_kantor')[$hariKe] ?? null;
+
+            $isOnCall = $a->shift && (
+                str_contains(strtolower((string) $a->shift->keterangan), 'on call') ||
+                str_contains(strtolower((string) $a->shift->keterangan), 'on-call')
+            );
+
+            $strMasuk = $a->shift ? $a->shift->jam_masuk : ($jamKantorHari['masuk'] ?? null);
+            $strKeluar = $a->shift ? $a->shift->jam_keluar : ($jamKantorHari['keluar'] ?? null);
+
             // 1. Hitung TL (Terlambat)
-            if ($a->check_in && $a->shift) {
-                $jamMasuk  = Carbon::parse($a->tanggal->format('Y-m-d') . ' ' . $a->shift->jam_masuk);
-                $checkIn   = Carbon::parse($a->check_in);
-                $menitTL   = $jamMasuk->diffInMinutes($checkIn, false); // positif = terlambat
+            if ($a->check_in && $strMasuk && !$isOnCall) {
+                $jamMasuk = Carbon::parse($tglStr . ' ' . $strMasuk);
+                $checkIn  = Carbon::parse($a->check_in);
+                $menitTL  = $jamMasuk->diffInMinutes($checkIn, false);
 
                 if ($menitTL > 0) {
                     $hariTL = $menitTL;
@@ -173,10 +185,16 @@ class SkorController extends Controller
             }
 
             // 2. Hitung PSW (Pulang Sebelum Waktunya)
-            if ($a->check_out && $a->shift) {
-                $jamKeluar  = Carbon::parse($a->tanggal->format('Y-m-d') . ' ' . $a->shift->jam_keluar);
-                $checkOut   = Carbon::parse($a->check_out);
-                $menitPSW   = $checkOut->diffInMinutes($jamKeluar, false); // positif = pulang awal (PSW)
+            if ($a->check_out && $strKeluar && !$isOnCall) {
+                $jamKeluar = Carbon::parse($tglStr . ' ' . $strKeluar);
+                if ($strMasuk) {
+                    $jamMasukRef = Carbon::parse($tglStr . ' ' . $strMasuk);
+                    if ($jamKeluar->lte($jamMasukRef)) {
+                        $jamKeluar->addDay(); // Shift malam lintas hari
+                    }
+                }
+                $checkOut = Carbon::parse($a->check_out);
+                $menitPSW = $checkOut->diffInMinutes($jamKeluar, false);
 
                 if ($menitPSW > 0) {
                     $hariPSW = $menitPSW;

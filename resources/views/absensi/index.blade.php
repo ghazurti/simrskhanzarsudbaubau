@@ -74,15 +74,23 @@
                     $isWeekend = in_array($hariIni, config('attendance.hari_libur', [0,6]));
                 @endphp
 
-                @if($liburHariIni)
+                @if($shiftHariIni)
+                <div style="background:var(--primary-light);border-radius:9px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--primary);font-weight:600;display:flex;align-items:center;gap:8px">
+                    <i class="bi bi-clock"></i>
+                    Shift {{ ucfirst($shiftHariIni->jenis_shift) }}: {{ $shiftHariIni->jam_masuk }} — {{ $shiftHariIni->jam_keluar }}
+                    @if($shiftHariIni->keterangan)
+                        <span style="font-weight:500;color:var(--gray-600);margin-left:4px">({{ $shiftHariIni->keterangan }})</span>
+                    @endif
+                </div>
+                @elseif($liburHariIni)
                 <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#dc2626;font-weight:600;display:flex;align-items:center;gap:8px">
                     <i class="bi bi-calendar-x-fill"></i>
-                    Libur Nasional: {{ $liburHariIni->nama_libur }}. Absensi tidak tersedia.
+                    Libur Nasional: {{ $liburHariIni->nama_libur }}. {{ $user->isItUnit() ? 'Jika bertugas On-Call IT, tambahkan jadwal di menu Jadwal Shift.' : 'Absensi tidak tersedia.' }}
                 </div>
                 @elseif($user->jenis_absensi === 'normal' && $isWeekend)
                 <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#dc2626;font-weight:600;display:flex;align-items:center;gap:8px">
                     <i class="bi bi-house-heart-fill"></i>
-                    Hari libur mingguan. Nikmati istirahat Anda!
+                    {{ $user->isItUnit() ? 'Akhir Pekan (Sabtu/Minggu). Jika Anda bertugas Shift / On-Call IT hari ini, silakan input di menu Jadwal Shift.' : 'Hari libur mingguan. Nikmati istirahat Anda!' }}
                 </div>
                 @elseif($user->jenis_absensi === 'normal')
                 @php
@@ -98,11 +106,6 @@
                     @else
                         Jam kantor hari ini tidak terdefinisi.
                     @endif
-                </div>
-                @elseif($shiftHariIni)
-                <div style="background:var(--primary-light);border-radius:9px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--primary);font-weight:600;display:flex;align-items:center;gap:8px">
-                    <i class="bi bi-clock"></i>
-                    Shift {{ ucfirst($shiftHariIni->jenis_shift) }}: {{ $shiftHariIni->jam_masuk }} — {{ $shiftHariIni->jam_keluar }}
                 </div>
                 @endif
 

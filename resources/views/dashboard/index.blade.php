@@ -385,12 +385,12 @@
         <i class="bi bi-calendar-x-fill" style="color:#dc2626"></i>
         <div style="font-size:13px;font-weight:600;color:#dc2626">Libur Nasional: {{ $liburHariIni->nama_libur }}</div>
     </div>
-    @elseif($user->jenis_absensi === 'normal' && $isWeekend)
+    @elseif(!$shiftHariIni && $user->jenis_absensi === 'normal' && $isWeekend)
     <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
         <i class="bi bi-house-heart-fill" style="color:#dc2626"></i>
         <div style="font-size:13px;font-weight:600;color:#dc2626">Hari libur mingguan. Nikmati istirahat Anda!</div>
     </div>
-    @elseif($user->jenis_absensi === 'normal')
+    @elseif(!$shiftHariIni && $user->jenis_absensi === 'normal')
     @php $jamKantor = config('attendance.jam_kantor')[$hariIni] ?? null; @endphp
     @if($jamKantor)
     <div style="background:var(--primary-light);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">

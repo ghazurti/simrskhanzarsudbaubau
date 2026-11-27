@@ -31,6 +31,13 @@ class ShiftController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        if (!$user->canManageShift()) {
+            return response()->json([
+                'message' => 'Anda terdaftar sebagai pegawai absensi normal. Fitur input shift mandiri hanya untuk pegawai Shift dan unit IT/SIMRS.'
+            ], 403);
+        }
+
         $request->validate([
             'tanggal' => 'required|date',
             'jenis_shift' => 'required|in:pagi,siang,malam',
@@ -39,26 +46,20 @@ class ShiftController extends Controller
             'keterangan' => 'nullable|string',
         ]);
 
-        $user = auth()->user();
+        $shift = Shift::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'tanggal' => $request->tanggal,
+            ],
+            [
+                'jenis_shift' => $request->jenis_shift,
+                'jam_masuk' => $request->jam_masuk,
+                'jam_keluar' => $request->jam_keluar,
+                'keterangan' => $request->keterangan,
+            ]
+        );
 
-        $existing = Shift::where('user_id', $user->id)
-            ->where('tanggal', $request->tanggal)
-            ->first();
-
-        if ($existing) {
-            return response()->json(['message' => 'Shift untuk tanggal ini sudah ada'], 422);
-        }
-
-        $shift = Shift::create([
-            'user_id' => $user->id,
-            'tanggal' => $request->tanggal,
-            'jenis_shift' => $request->jenis_shift,
-            'jam_masuk' => $request->jam_masuk,
-            'jam_keluar' => $request->jam_keluar,
-            'keterangan' => $request->keterangan,
-        ]);
-
-        return response()->json(['message' => 'Shift berhasil ditambahkan', 'shift' => $shift], 201);
+        return response()->json(['message' => 'Shift berhasil disimpan', 'shift' => $shift], 201);
     }
 
     public function show(string $id)

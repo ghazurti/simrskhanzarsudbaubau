@@ -74,40 +74,63 @@ class AbsensiController extends Controller
             ? $request->file('foto')->store('foto-absensi', 'public')
             : null;
 
-        if ($user->jenis_absensi === 'normal') {
+        // Cari jadwal shift hari ini (baik dari request shift_id maupun dari tabel shifts hari ini untuk user tersebut)
+        $shift = null;
+        if ($request->filled('shift_id')) {
+            $shift = Shift::where('id', $request->shift_id)->where('user_id', $user->id)->first();
+        }
+        if (!$shift && ($user->jenis_absensi === 'shift' || $user->isItUnit())) {
+            $shift = Shift::where('user_id', $user->id)->whereDate('tanggal', $today)->first();
+        }
+
+        // Pegawai shift murni (bukan IT hybrid) wajib memiliki jadwal shift
+        if ($user->jenis_absensi === 'shift' && !$user->isItUnit() && !$shift) {
+            return response()->json(['message' => 'Anda belum memiliki jadwal shift hari ini. Silakan tambahkan jadwal shift terlebih dahulu.'], 422);
+        }
+
+        // Jika tidak ada shift hari ini, terapkan aturan jam kantor Normal (Senin-Jumat 07:30-16:00)
+        if (!$shift) {
             $hariIni = Carbon::today()->dayOfWeek;
             if (in_array($hariIni, config('attendance.hari_libur'))) {
-                return response()->json(['message' => 'Hari ini adalah hari libur. Absensi tidak tersedia.'], 422);
+                $pesanLibur = $user->isItUnit()
+                    ? 'Hari ini adalah akhir pekan (Sabtu/Minggu). Khusus IT/SIMRS yang bertugas On-Call atau Shift, silakan input jadwal Shift terlebih dahulu di menu Jadwal Shift.'
+                    : 'Hari ini adalah hari libur. Absensi tidak tersedia.';
+                return response()->json(['message' => $pesanLibur], 422);
             }
             $liburNasional = Libur::whereDate('tanggal', Carbon::today())->first();
             if ($liburNasional) {
-                return response()->json(['message' => 'Hari ini adalah hari libur nasional: ' . $liburNasional->nama_libur . '. Absensi tidak tersedia.'], 422);
+                $pesanNas = $user->isItUnit()
+                    ? 'Hari ini libur nasional (' . $liburNasional->nama_libur . '). Jika Anda piket On-Call IT, silakan input jadwal Shift terlebih dahulu.'
+                    : 'Hari ini adalah hari libur nasional: ' . $liburNasional->nama_libur . '. Absensi tidak tersedia.';
+                return response()->json(['message' => $pesanNas], 422);
             }
         }
 
         $status = 'hadir';
-        if ($user->jenis_absensi === 'normal') {
+        $toleransi = (int) config('attendance.toleransi_menit', 15);
+
+        if ($shift) {
+            $isOnCall = str_contains(strtolower((string) $shift->keterangan), 'on call')
+                     || str_contains(strtolower((string) $shift->keterangan), 'on-call');
+            if (!$isOnCall) {
+                $jamMasuk = Carbon::parse($today . ' ' . $shift->jam_masuk);
+                if (Carbon::now()->gt($jamMasuk->addMinutes($toleransi))) {
+                    $status = 'terlambat';
+                }
+            }
+        } else {
             $hariIni   = Carbon::today()->dayOfWeek;
             $jamKantor = config('attendance.jam_kantor')[$hariIni] ?? ['masuk' => '07:30'];
-            $toleransi = config('attendance.toleransi_menit', 15);
             $jamMasuk  = Carbon::parse($today . ' ' . $jamKantor['masuk']);
             if (Carbon::now()->gt($jamMasuk->addMinutes($toleransi))) {
                 $status = 'terlambat';
-            }
-        } elseif ($request->filled('shift_id')) {
-            $shift = Shift::find($request->shift_id);
-            if ($shift) {
-                $jamMasuk = Carbon::parse($today . ' ' . $shift->jam_masuk);
-                if (Carbon::now()->gt($jamMasuk->addMinutes(15))) {
-                    $status = 'terlambat';
-                }
             }
         }
 
         $absensi = Absensi::updateOrCreate(
             ['user_id' => $user->id, 'tanggal' => $today],
             [
-                'shift_id' => $request->shift_id,
+                'shift_id' => $shift?->id,
                 'check_in' => Carbon::now(),
                 'foto_check_in' => $fotoPath,
                 'latitude_in' => $request->latitude,
@@ -139,6 +162,20 @@ class AbsensiController extends Controller
         $absensi = Absensi::where('user_id', $user->id)
             ->where('tanggal', $today)
             ->first();
+
+        // Dukungan Shift Malam lintas hari: bila hari ini belum ada check-in, cek shift malam kemarin yang belum check-out
+        if ((!$absensi || !$absensi->check_in) && Carbon::now()->hour < 12) {
+            $yesterday = Carbon::yesterday()->toDateString();
+            $absensiKemarin = Absensi::with('shift')
+                ->where('user_id', $user->id)
+                ->where('tanggal', $yesterday)
+                ->whereNotNull('check_in')
+                ->whereNull('check_out')
+                ->first();
+            if ($absensiKemarin && $absensiKemarin->shift && $absensiKemarin->shift->jenis_shift === 'malam') {
+                $absensi = $absensiKemarin;
+            }
+        }
 
         if (!$absensi || !$absensi->check_in) {
             return response()->json(['message' => 'Anda belum melakukan absen masuk hari ini'], 422);
@@ -200,11 +237,11 @@ class AbsensiController extends Controller
             try {
                 AuditLog::create([
                     'user_id' => $user?->id,
-                    'action' => 'fake_gps_blocked',
-                    'model_type' => 'Absensi',
+                    'aksi' => 'fake_gps_' . $aksi,
+                    'model' => 'Absensi',
                     'model_id' => null,
-                    'new_values' => [
-                        'aksi' => $aksi,
+                    'data_lama' => null,
+                    'data_baru' => [
                         'latitude' => $request->latitude,
                         'longitude' => $request->longitude,
                         'accuracy' => $request->accuracy,
@@ -213,7 +250,6 @@ class AbsensiController extends Controller
                     'user_agent' => $request->userAgent(),
                 ]);
             } catch (\Throwable $e) {
-                // Jangan sampai error logging meloloskan Fake GPS
             }
 
             return response()->json([
@@ -243,7 +279,7 @@ class AbsensiController extends Controller
 
     private function hitungJarak($lat1, $lon1, $lat2, $lon2)
     {
-        $r = 6371000; // radius bumi dalam meter
+        $r = 6371000;
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
         $a = sin($dLat / 2) * sin($dLat / 2) +
