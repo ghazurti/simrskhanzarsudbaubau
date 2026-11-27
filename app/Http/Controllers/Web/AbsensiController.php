@@ -66,7 +66,7 @@ class AbsensiController extends Controller
         if ($request->filled('shift_id')) {
             $shift = Shift::where('id', $request->shift_id)->where('user_id', $user->id)->first();
         }
-        if (!$shift && ($user->jenis_absensi === 'shift' || $user->isItUnit())) {
+        if (!$shift) {
             $shift = Shift::where('user_id', $user->id)->whereDate('tanggal', $today)->first();
         }
 
