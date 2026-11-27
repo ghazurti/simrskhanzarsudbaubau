@@ -60,7 +60,7 @@ class AbsensiController extends Controller
         if (!$shift) {
             $shift = Shift::where('user_id', $user->id)->whereDate('tanggal', $today)->first();
         }
-        $isOnCall = $shift && (
+        $isOnCall = $user->isItUnit() && $shift && (
             $shift->jenis_shift === 'oncall'
             || str_contains(strtolower((string) $shift->keterangan), 'on call')
             || str_contains(strtolower((string) $shift->keterangan), 'on-call')

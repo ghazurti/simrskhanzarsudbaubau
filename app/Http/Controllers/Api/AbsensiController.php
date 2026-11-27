@@ -66,7 +66,7 @@ class AbsensiController extends Controller
         if (!$shift) {
             $shift = Shift::where('user_id', $user->id)->whereDate('tanggal', $today)->first();
         }
-        $isOnCall = $this->isOnCallShift($shift);
+        $isOnCall = $this->isOnCallShift($shift, $user);
 
         if ($securityError = $this->validateLocationSecurity($request, 'check_in', !$isOnCall)) {
             return $securityError;
@@ -174,14 +174,14 @@ class AbsensiController extends Controller
                 $s = $absensiKemarin->shift;
                 $isOvernight = $s->jenis_shift === 'malam'
                     || $s->jam_keluar <= $s->jam_masuk
-                    || $this->isOnCallShift($s);
+                    || $this->isOnCallShift($s, $user);
                 if ($isOvernight) {
                     $absensi = $absensiKemarin;
                 }
             }
         }
 
-        $isOnCall = $this->isOnCallShift($absensi?->shift);
+        $isOnCall = $this->isOnCallShift($absensi?->shift, $user);
         if ($securityError = $this->validateLocationSecurity($request, 'check_out', !$isOnCall)) {
             return $securityError;
         }
@@ -238,9 +238,9 @@ class AbsensiController extends Controller
         return response()->json(['rekap' => $rekap, 'detail' => $absensis]);
     }
 
-    private function isOnCallShift(?Shift $shift): bool
+    private function isOnCallShift(?Shift $shift, $user = null): bool
     {
-        if (!$shift) {
+        if (!$shift || !$user || !$user->isItUnit()) {
             return false;
         }
         $ket = strtolower((string) $shift->keterangan);
