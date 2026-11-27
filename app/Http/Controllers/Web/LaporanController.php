@@ -52,7 +52,7 @@ class LaporanController extends Controller
                     $sub->where('name', 'like', "%{$search}%")
                         ->orWhere('nip', 'like', "%{$search}%");
                 }))
-                ->with(['absensis' => fn($q) => $q->whereDate('tanggal', $tglStr)])
+                ->with(['absensis' => fn($q) => $q->with('shift')->whereDate('tanggal', $tglStr)])
                 ->orderBy('unit')->orderBy('name')
                 ->get();
 
@@ -98,7 +98,7 @@ class LaporanController extends Controller
             }
         };
 
-        $query = Absensi::with('user')
+        $query = Absensi::with(['user', 'shift'])
             ->whereMonth('tanggal', $bulan)
             ->whereYear('tanggal', $tahun);
 

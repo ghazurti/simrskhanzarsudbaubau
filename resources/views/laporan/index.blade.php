@@ -203,12 +203,31 @@
                         <td style="color:var(--primary);font-weight:600">{{ $jamOut ?: '-' }}</td>
                         <td>
                             @if($a)
-                                <span class="badge badge-{{ $a->status }}">{{ ucfirst($a->status) }}</span>
+                                @php
+                                    $sh = $a->shift;
+                                    $isOnCall = $sh && ($sh->jenis_shift === 'oncall' || str_contains(strtolower((string)$sh->keterangan), 'on call') || str_contains(strtolower((string)$sh->keterangan), 'on-call'));
+                                @endphp
+                                <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+                                    <span class="badge badge-{{ $a->status }}">{{ ucfirst($a->status) }}</span>
+                                    @if($isOnCall)
+                                        <span style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">
+                                            <i class="bi bi-tools"></i> On-Call
+                                        </span>
+                                    @elseif($sh)
+                                        <span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">
+                                            Shift {{ ucfirst($sh->jenis_shift) }}
+                                        </span>
+                                    @else
+                                        <span style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap">
+                                            Normal
+                                        </span>
+                                    @endif
+                                </div>
                             @else
                                 <span style="background:#fee2e2;color:#b91c1c;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">Belum Absen</span>
                             @endif
                         </td>
-                        <td style="font-size:12px;color:var(--gray-500);max-width:220px">{{ $a->keterangan ?? '-' }}</td>
+                        <td style="font-size:12px;color:var(--gray-500);max-width:220px">{{ $a->keterangan ?? ($a?->shift?->keterangan ?? '-') }}</td>
                         <td style="text-align:center;white-space:nowrap">
                             <button type="button"
                                 onclick="bukaKoreksiRow({{ $u->id }}, '{{ $tanggal }}', '{{ $jamIn ?: '07:30' }}', '{{ $jamOut ?: '16:00' }}', '{{ $a->status ?? 'hadir' }}', '{{ addslashes($u->name) }}')"
@@ -400,8 +419,29 @@ $statusConfig = [
                         @endif
                     </td>
                     <td style="color:var(--gray-400);font-size:12px">{{ $dur ?? '-' }}</td>
-                    <td><span class="badge badge-{{ $a->status }}">{{ ucfirst($a->status) }}</span></td>
-                    <td style="font-size:12px;color:var(--gray-500);max-width:200px">{{ $a->keterangan ?: '-' }}</td>
+                    <td>
+                        @php
+                            $sh = $a->shift;
+                            $isOnCall = $sh && ($sh->jenis_shift === 'oncall' || str_contains(strtolower((string)$sh->keterangan), 'on call') || str_contains(strtolower((string)$sh->keterangan), 'on-call'));
+                        @endphp
+                        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+                            <span class="badge badge-{{ $a->status }}">{{ ucfirst($a->status) }}</span>
+                            @if($isOnCall)
+                                <span style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">
+                                    <i class="bi bi-tools"></i> On-Call
+                                </span>
+                            @elseif($sh)
+                                <span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">
+                                    Shift {{ ucfirst($sh->jenis_shift) }}
+                                </span>
+                            @else
+                                <span style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap">
+                                    Normal
+                                </span>
+                            @endif
+                        </div>
+                    </td>
+                    <td style="font-size:12px;color:var(--gray-500);max-width:200px">{{ $a->keterangan ?: ($sh?->keterangan ?: '-') }}</td>
                     <td style="text-align:center;white-space:nowrap">
                         <button type="button"
                             onclick="bukaKoreksiRow({{ $a->user_id }}, '{{ $tglIso }}', '{{ $jamIn }}', '{{ $jamOut }}', '{{ $a->status }}', '{{ addslashes($a->user->name ?? '-') }}')"
