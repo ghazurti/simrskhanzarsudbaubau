@@ -114,14 +114,14 @@ class SkorController extends Controller
 
         $pegawai = User::findOrFail($userId);
 
-        if (!$authUser->isAdmin() && $pegawai->id !== $authUser->id) {
+        if (!$authUser->isAdminOrKepalaUnit() && $pegawai->id !== $authUser->id) {
             abort(403);
         }
 
         $skor = $this->hitungSkor($pegawai, $bulan, $tahun);
         $pejabatPenilai = User::where('role', 'admin')->first();
 
-        return view('laporan.skor-cetak', compact('pegawai', $skor, 'bulan', 'tahun', 'pejabatPenilai'));
+        return view('laporan.skor-cetak', compact('pegawai', 'skor', 'bulan', 'tahun', 'pejabatPenilai'));
     }
 
     /**
@@ -155,16 +155,24 @@ class SkorController extends Controller
                 continue;
             }
 
-            // KT5: Ada check-in tapi tidak check-out
-            if ($a->check_in && !$a->check_out && $a->status !== 'izin' && $a->status !== 'sakit') {
+            // KT5: Ada check-in tapi tidak check-out (hanya untuk tanggal yang sudah lewat, bukan hari ini)
+            if (
+                $a->check_in
+                && !$a->check_out
+                && $a->tanggal->isBefore(Carbon::today())
+                && $a->status !== 'izin'
+                && $a->status !== 'sakit'
+            ) {
                 $kt['KT5']++;
             }
 
             $tglStr = $a->tanggal->format('Y-m-d');
             $hariKe = $a->tanggal->dayOfWeek;
             $jamKantorHari = config('attendance.jam_kantor')[$hariKe] ?? null;
+            $toleransi = (int) config('attendance.toleransi_menit', 15);
 
-            $isOnCall = $a->shift && (
+            $isOnCall = $pegawai->isItUnit() && $a->shift && (
+                $a->shift->jenis_shift === 'oncall' ||
                 str_contains(strtolower((string) $a->shift->keterangan), 'on call') ||
                 str_contains(strtolower((string) $a->shift->keterangan), 'on-call')
             );
@@ -172,13 +180,13 @@ class SkorController extends Controller
             $strMasuk = $a->shift ? $a->shift->jam_masuk : ($jamKantorHari['masuk'] ?? null);
             $strKeluar = $a->shift ? $a->shift->jam_keluar : ($jamKantorHari['keluar'] ?? null);
 
-            // 1. Hitung TL (Terlambat)
+            // 1. Hitung TL (Terlambat) — selaras dengan toleransi keterlambatan (default 15 menit)
             if ($a->check_in && $strMasuk && !$isOnCall) {
                 $jamMasuk = Carbon::parse($tglStr . ' ' . $strMasuk);
                 $checkIn  = Carbon::parse($a->check_in);
-                $menitTL  = $jamMasuk->diffInMinutes($checkIn, false);
+                $menitTL  = (int) floor($jamMasuk->diffInMinutes($checkIn, false));
 
-                if ($menitTL > 0) {
+                if ($menitTL > $toleransi) {
                     $hariTL = $menitTL;
                     $this->assignTier($menitTL, $kt);
                 }
@@ -194,7 +202,7 @@ class SkorController extends Controller
                     }
                 }
                 $checkOut = Carbon::parse($a->check_out);
-                $menitPSW = $checkOut->diffInMinutes($jamKeluar, false);
+                $menitPSW = (int) floor($checkOut->diffInMinutes($jamKeluar, false));
 
                 if ($menitPSW > 0) {
                     $hariPSW = $menitPSW;
@@ -226,7 +234,7 @@ class SkorController extends Controller
             ];
         }
 
-        $skorAkhir = round(100 - $totalPotongan, 2);
+        $skorAkhir = max(0, round(100 - $totalPotongan, 2));
 
         return [
             'detail'        => $detail,
