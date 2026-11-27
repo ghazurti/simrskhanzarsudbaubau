@@ -18,6 +18,41 @@
     </div>
 </div>
 
+{{-- Set Massal Jenis Absensi per Unit --}}
+@if(isset($units) && $units->count() > 0)
+<div class="card" style="border:none;box-shadow:0 2px 6px rgba(0,0,0,0.04);border-radius:14px;margin-bottom:20px;background:#fff">
+    <div style="padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:38px;height:38px;border-radius:10px;background:#eef2ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+                <div style="font-weight:700;font-size:14px;color:var(--gray-900)">Set Massal Jenis Absensi per Unit</div>
+                <div style="font-size:12px;color:var(--gray-500)">Ubah seluruh pegawai dalam 1 unit menjadi <strong>Shift</strong> atau <strong>Normal</strong> sekaligus</div>
+            </div>
+        </div>
+        <form action="{{ route('pegawai.bulk-jenis-absensi') }}" method="POST"
+            onsubmit="return confirm('Ubah jenis absensi seluruh pegawai di unit yang dipilih?')"
+            style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            @csrf
+            <select name="unit" class="form-control form-select" required style="min-width:210px;padding:9px 12px;border-radius:10px;font-size:13.5px">
+                <option value="">-- Pilih Unit --</option>
+                @foreach($units as $u)
+                <option value="{{ $u->unit }}">{{ $u->unit }} ({{ $u->total }} pegawai)</option>
+                @endforeach
+            </select>
+            <select name="jenis_absensi" class="form-control form-select" required style="width:180px;padding:9px 12px;border-radius:10px;font-size:13.5px">
+                <option value="shift">Pegawai Shift</option>
+                <option value="normal">Normal (Jam Kantor)</option>
+            </select>
+            <button type="submit" class="btn btn-primary" style="padding:9px 16px;border-radius:10px;font-size:13.5px;font-weight:600">
+                <i class="bi bi-check2-all"></i> Terapkan ke Unit
+            </button>
+        </form>
+    </div>
+</div>
+@endif
+
 <div class="card" style="border:none;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);border-radius:16px;overflow:hidden">
     <div class="card-header" style="background:#fff;padding:20px 24px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center">
         <div>
@@ -78,6 +113,16 @@
                             @if($p->unit)
                             <span style="background:#f1f5f9;color:#475569;padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:700;border:1px solid #e2e8f0;display:inline-block">
                                 {{ $p->unit }}
+                            </span>
+                            @endif
+
+                            @if($p->jenis_absensi === 'shift')
+                            <span style="background:#eef2ff;color:#4338ca;padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:700;border:1px solid #c7d2fe;display:inline-block">
+                                Shift
+                            </span>
+                            @else
+                            <span style="background:#f0f9ff;color:#0369a1;padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:700;border:1px solid #bae6fd;display:inline-block">
+                                Normal
                             </span>
                             @endif
 

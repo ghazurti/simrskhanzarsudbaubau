@@ -23,8 +23,23 @@ class PegawaiController extends Controller
                   ->orWhere('unit', 'like', '%' . $request->search . '%');
             });
         }
+        if ($request->filled('unit')) {
+            $query->where('unit', $request->unit);
+        }
+        if ($request->filled('jenis_absensi')) {
+            $query->where('jenis_absensi', $request->jenis_absensi);
+        }
         $pegawais = $query->orderBy('name')->paginate(15)->withQueryString();
-        return view('pegawai.index', compact('pegawais'));
+
+        $units = User::whereIn('role', ['pegawai', 'kepala_unit'])
+            ->whereNotNull('unit')
+            ->where('unit', '!=', '')
+            ->selectRaw('unit, COUNT(*) as total')
+            ->groupBy('unit')
+            ->orderBy('unit')
+            ->get();
+
+        return view('pegawai.index', compact('pegawais', 'units'));
     }
 
     public function create()
@@ -140,6 +155,22 @@ class PegawaiController extends Controller
     {
         $pegawai->delete();
         return back()->with('success', 'Pegawai berhasil dihapus.');
+    }
+
+    public function bulkJenisAbsensi(Request $request)
+    {
+        $request->validate([
+            'unit' => 'required|string|max:100',
+            'jenis_absensi' => 'required|in:normal,shift',
+        ]);
+
+        $updated = User::whereIn('role', ['pegawai', 'kepala_unit'])
+            ->where('unit', $request->unit)
+            ->update(['jenis_absensi' => $request->jenis_absensi]);
+
+        $label = $request->jenis_absensi === 'shift' ? 'Shift' : 'Normal (Jam Kantor)';
+
+        return back()->with('success', "{$updated} pegawai di unit \"{$request->unit}\" berhasil diubah menjadi {$label}.");
     }
 
     public function resetDevice(User $pegawai)
