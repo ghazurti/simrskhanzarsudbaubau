@@ -24,6 +24,7 @@ class User extends Authenticatable implements JWTSubject
         'pangkat_gol',
         'unit',
         'jenis_absensi',
+        'jenis_absensi_locked',
         'role',
         'device_id',
         'device_name',
@@ -42,6 +43,7 @@ class User extends Authenticatable implements JWTSubject
         return [
             'email_verified_at' => 'datetime',
             'device_bound_at' => 'datetime',
+            'jenis_absensi_locked' => 'boolean',
             'password' => 'hashed',
         ];
     }

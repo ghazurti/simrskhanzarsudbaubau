@@ -142,6 +142,32 @@ class AuthController extends Controller
         return response()->json(['message' => 'Profil berhasil diupdate', 'user' => $user->fresh()]);
     }
 
+    public function setJenisAbsensi(Request $request)
+    {
+        $user = auth('api')->user();
+
+        if ($user->jenis_absensi_locked) {
+            return response()->json([
+                'message' => 'Jenis absensi Anda sudah terkunci. Hubungi Admin/Kepegawaian jika perlu diubah.',
+            ], 422);
+        }
+
+        $request->validate([
+            'jenis_absensi' => 'required|in:normal,shift',
+        ]);
+
+        $user->update([
+            'jenis_absensi' => $request->jenis_absensi,
+            'jenis_absensi_locked' => true,
+        ]);
+
+        $label = $request->jenis_absensi === 'shift' ? 'Pegawai Shift' : 'Jam Kantor Normal';
+        return response()->json([
+            'message' => "Jenis absensi disimpan sebagai {$label} dan otomatis terkunci.",
+            'user' => $user->fresh(),
+        ]);
+    }
+
     protected function respondWithToken($token)
     {
         return response()->json([

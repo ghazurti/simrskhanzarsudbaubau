@@ -25,6 +25,7 @@ Route::middleware('auth:api')->name('api.')->group(function () {
         Route::post('/refresh', [AuthController::class, 'refresh']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/profile', [AuthController::class, 'updateProfile']);
+        Route::post('/jenis-absensi', [AuthController::class, 'setJenisAbsensi']);
 
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index']);

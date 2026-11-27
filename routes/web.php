@@ -29,6 +29,7 @@ Route::middleware(['auth'])->group(function () {
     // Profil
     Route::get('/profil', [AuthController::class, 'profil'])->name('profil');
     Route::post('/profil', [AuthController::class, 'updateProfil'])->name('profil.update');
+    Route::post('/profil/jenis-absensi', [AuthController::class, 'setJenisAbsensi'])->name('profil.jenis-absensi');
     Route::get('/profil/ganti-password', [AuthController::class, 'gantiPassword'])->name('profil.ganti-password');
     Route::post('/profil/ganti-password', [AuthController::class, 'updatePassword'])->name('profil.update-password');
 

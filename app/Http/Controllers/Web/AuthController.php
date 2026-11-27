@@ -87,4 +87,25 @@ class AuthController extends Controller
 
         return back()->with('success', 'Password berhasil diubah.');
     }
+
+    public function setJenisAbsensi(Request $request)
+    {
+        $user = auth()->user();
+
+        if ($user->jenis_absensi_locked) {
+            return back()->with('error', 'Jenis absensi Anda sudah terkunci. Hubungi Admin/Kepegawaian jika perlu diubah.');
+        }
+
+        $request->validate([
+            'jenis_absensi' => 'required|in:normal,shift',
+        ]);
+
+        $user->update([
+            'jenis_absensi' => $request->jenis_absensi,
+            'jenis_absensi_locked' => true,
+        ]);
+
+        $label = $request->jenis_absensi === 'shift' ? 'Pegawai Shift' : 'Jam Kantor Normal';
+        return back()->with('success', "Jenis absensi Anda telah disimpan sebagai {$label} dan otomatis terkunci.");
+    }
 }

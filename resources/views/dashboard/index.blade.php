@@ -326,6 +326,35 @@
 @else
 {{-- ==================== PEGAWAI DASHBOARD ==================== --}}
 
+@if(!$user->jenis_absensi_locked)
+<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:14px;padding:18px 20px;margin-bottom:20px">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+        <div style="width:38px;height:38px;border-radius:10px;background:#fef3c7;color:#b45309;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            <i class="bi bi-lock-fill"></i>
+        </div>
+        <div>
+            <div style="font-weight:800;font-size:15px;color:#92400e">Pilih Jenis Absensi Anda (Sekali Saja — Otomatis Terkunci)</div>
+            <div style="font-size:12.5px;color:#78350f;margin-top:2px">
+                Silakan pilih pola kerja Anda. Setelah disimpan, pilihan akan <strong>otomatis terkunci</strong> dan hanya dapat diubah oleh Admin/Kepegawaian.
+            </div>
+        </div>
+    </div>
+    <form action="{{ route('profil.jenis-absensi') }}" method="POST"
+        onsubmit="return confirm('Yakin dengan pilihan jenis absensi ini? Pilihan akan langsung terkunci setelah disimpan.')"
+        style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        @csrf
+        <select name="jenis_absensi" class="form-control form-select" required style="flex:1;min-width:220px;padding:10px 12px;border-radius:10px;background:#fff">
+            <option value="">-- Pilih Pola Kerja Anda --</option>
+            <option value="normal">Jam Kantor Normal (Senin–Jumat)</option>
+            <option value="shift">Pegawai Shift (IGD / Rawat Inap / Jaga)</option>
+        </select>
+        <button type="submit" class="btn btn-primary" style="padding:10px 18px;border-radius:10px;font-weight:700">
+            <i class="bi bi-check-circle"></i> Simpan &amp; Kunci Pilihan
+        </button>
+    </form>
+</div>
+@endif
+
 @php
     $absensiHariIni = $data['absensi_hari_ini'];
     $shiftHariIni   = $data['shift_hari_ini'];

@@ -83,6 +83,7 @@ class PegawaiController extends Controller
                 'pangkat_gol' => $request->pangkat_gol,
                 'unit' => $request->unit,
                 'jenis_absensi' => $request->jenis_absensi,
+                'jenis_absensi_locked' => true,
                 'role' => $request->role,
                 'password' => Hash::make($password),
             ]);
@@ -141,6 +142,7 @@ class PegawaiController extends Controller
         ]);
 
         $data = $request->only(['name', 'email', 'nik', 'nip', 'no_hp', 'jabatan', 'pangkat_gol', 'unit', 'jenis_absensi', 'role']);
+        $data['jenis_absensi_locked'] = true;
 
         if ($request->filled('password')) {
             $request->validate(['password' => 'min:6|confirmed']);
@@ -166,7 +168,10 @@ class PegawaiController extends Controller
 
         $updated = User::whereIn('role', ['pegawai', 'kepala_unit'])
             ->where('unit', $request->unit)
-            ->update(['jenis_absensi' => $request->jenis_absensi]);
+            ->update([
+                'jenis_absensi' => $request->jenis_absensi,
+                'jenis_absensi_locked' => true,
+            ]);
 
         $label = $request->jenis_absensi === 'shift' ? 'Shift' : 'Normal (Jam Kantor)';
 
