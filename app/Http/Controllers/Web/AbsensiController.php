@@ -150,7 +150,17 @@ class AbsensiController extends Controller
                 ->whereNotNull('check_in')
                 ->whereNull('check_out')
                 ->first();
-            if ($absensiKemarin && $absensiKemarin->shift && $absensiKemarin->shift->jenis_shift === 'malam') {
+            if ($absensiKemarin && $absensiKemarin->shift) {
+                $s = $absensiKemarin->shift;
+                $isOvernight = $s->jenis_shift === 'malam'
+                    || $s->jam_keluar <= $s->jam_masuk
+                    || str_contains(strtolower((string) $s->keterangan), 'on-call')
+                    || str_contains(strtolower((string) $s->keterangan), 'on call');
+                if ($isOvernight) {
+                    $absensi = $absensiKemarin;
+                }
+            }
+            if (false) {
                 $absensi = $absensiKemarin;
             }
         }

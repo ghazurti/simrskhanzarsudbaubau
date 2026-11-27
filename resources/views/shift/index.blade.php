@@ -81,7 +81,7 @@
                     @if(auth()->user()->isItUnit() || auth()->user()->isAdmin())
                     <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
                         <button type="button" onclick="setPresetIt('siang')" class="btn btn-outline" style="font-size:11px;padding:3px 8px;border-radius:6px">⚡ Preset Shift Siang IT (14:00-21:00)</button>
-                        <button type="button" onclick="setPresetIt('oncall')" class="btn btn-outline" style="font-size:11px;padding:3px 8px;border-radius:6px">🛠️ Preset On-Call Sabtu/Minggu</button>
+                        <button type="button" onclick="setPresetIt('oncall')" class="btn btn-outline" style="font-size:11px;padding:3px 8px;border-radius:6px">🛠️ Preset On-Call Sabtu/Minggu (Pagi - 06:00 Pagi)</button>
                     </div>
                     @endif
                 </div>
@@ -200,8 +200,8 @@ function setPresetIt(mode) {
     } else if (mode === 'oncall') {
         sel.value = 'pagi';
         document.getElementById('jamMasuk').value = '08:00';
-        document.getElementById('jamKeluar').value = '20:00';
-        if (ket) ket.value = 'On-Call IT Sabtu/Minggu';
+        document.getElementById('jamKeluar').value = '06:00';
+        if (ket) ket.value = 'On-Call IT Sabtu/Minggu (08:00 - 06:00 Pagi)';
     }
 }
 
